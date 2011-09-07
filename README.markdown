@@ -4,4 +4,16 @@ Find the treasure...if you can stay alive long enough.
 
 # Install on OS X
 
+First, clone the github repository.  (See github for help with that.)
+
+Next, install the dependencies:
+
     sudo easy_install pyzmq
+
+Then start a server on your local machine:
+
+    ./treasure_server
+
+Then start any number of clients, also on your local machine (for now):
+
+    ./treasure
