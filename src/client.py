@@ -49,6 +49,8 @@ def main_input_handler(input):
           'cmd':'disconnect'})
       req_socket.recv_pyobj()
       raise urwid.ExitMainLoop()
+   if input == 'window resize':
+      pass
    else:
       req_socket.send_pyobj(
          {'name':name,
@@ -85,8 +87,11 @@ frame = urwid.Frame(
    footer=ChatEntry())
 frame.set_focus('footer')
 
+import map
+main_map = map.Map()
+
 # Create the main loop
 global loop
-loop = urwid.MainLoop(frame, palette, unhandled_input=main_input_handler)
+loop = urwid.MainLoop(main_map, palette, unhandled_input=main_input_handler)
 loop.event_loop.alarm(0, handle_network)
 loop.run()
