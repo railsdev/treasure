@@ -4,4 +4,4 @@
 # ${string%substring}
 
 # Take the full path, subtract the name of this script (treasure_server), then append /src/main.py and run
-${0%treasure_server}/src/server.py
+${0%treasure_server}/src/server.py $@

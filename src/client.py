@@ -7,21 +7,25 @@ parser = optparse.OptionParser()
 options, args = parser.parse_args()
 
 server_host = 'localhost'
+print args
 if len(args) > 0:
    server_host = args[0]
 
 context = zmq.Context()
-
-# Socket to submit requests to server, receive replies
-global push_socket
-push_socket = context.socket(zmq.PUSH)
-push_socket.connect("tcp://%s:5555" % server_host)
 
 # Socket to receive broadcasts from server
 global sub_socket
 sub_socket = context.socket(zmq.SUB)
 sub_socket.connect("tcp://%s:5556" % server_host)
 sub_socket.setsockopt(zmq.SUBSCRIBE, "")
+print "Connecting to server..."
+sub_socket.recv_pyobj()
+
+
+# Socket to submit requests to server, receive replies
+global push_socket
+push_socket = context.socket(zmq.PUSH)
+push_socket.connect("tcp://%s:5555" % server_host)
 
 def send_server(something):
    global push_socket

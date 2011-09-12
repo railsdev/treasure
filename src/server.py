@@ -51,6 +51,7 @@ while True:
          pub_socket.send_pyobj(
             {'actor':actor,
              'cmd':'actor_moved'})
-#   pub_socket.send_pyobj(heartbeat)
+   if heartbeat % 100 == 0:
+      pub_socket.send_pyobj({'heartbeat':heartbeat})
    heartbeat += 1
    time.sleep(.01)
