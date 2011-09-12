@@ -1,3 +1,6 @@
+import random
+random.seed()
+
 class Actor(object):
    def __init__(self, row, col, uid=None, symbol=None):
       if uid and (type(uid) == str):
@@ -9,9 +12,55 @@ class Actor(object):
       self.row = row
       self.col = col
       self.symbol=symbol
+      self.type = type
+
+   def collide(self, other):
+      return (other.row == self.row) and (other.col == self.col)
       
    def __repr__(self):
       return "<Actor %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
+
+class Pig(Actor):
+   def __init__(self, terrain):
+      self.terrain = terrain
+      row, col = 0, 0
+      while terrain[row][col] != ' ':
+         row = random.choice(range(len(terrain)))
+         col = random.choice(range(len(terrain[0])))
+      super(Pig, self).__init__(
+         row,
+         col,
+         uid='pig'+str(id(self)), symbol='p')
+
+   def __repr__(self):
+      return "<Pig %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
+
+   def move(self):
+      direction = random.choice(['up', 'down', 'left', 'right'])
+      # Attempt moving up to 5 times (we'll hit walls a lot)
+      for i in range(5):
+         newrow = self.row
+         newcol = self.col
+         if direction == 'up':
+            newrow -= 1
+         elif direction == 'down':
+            newrow += 1
+         elif direction == 'left':
+            newcol -= 1
+         elif direction == 'right':
+            newcol += 1
+         if (newrow < 0) or (newrow >= len(self.terrain)):
+            continue
+         if (newcol < 0) or (newcol >= len(self.terrain[0])):
+            continue
+         if (self.terrain[newrow][newcol] == 'X'):
+            continue
+         self.row = newrow
+         self.col = newcol
+         return True
+      return False
+         
+      
 
 class Cast(dict):
    # Ordered dictionary behavior (3 functions)
@@ -25,7 +74,7 @@ class Cast(dict):
       try:
          self.order.index(key)
       except:
-         self.order.append(key)
+         self.order.insert(0, key)
       
    def __delitem__(self, key):
       super(Cast, self).__delitem__(key)
@@ -47,12 +96,12 @@ class Cast(dict):
    # Other functions
    def add_actor(self, actor):
       self.__setitem__(actor.uid, actor)
-      print self.order
+      print "Actors", self.order
 
    def rm_actor(self, actor):
       del self[actor.uid]
       self.index = -1
-      print self.order
+      print "Remaing actors", self.order
       
    def update_actor(self, actor):
       if not self.has_key(actor.uid):

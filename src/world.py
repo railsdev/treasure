@@ -1,25 +1,13 @@
 import thing, sys, urwid
 
-terrain = [
-"oooooooooooooooooooooooooooooooo",
-"O                         |    O",
-"O  |                      |    O",
-"O  |                |     +-  -O",
-"O  |--- ---         |          O",
-"O         |         |          O",
-"O         ----------|          O",
-"O                              O",
-"O         |                    O",
-"oooooooooooooooooooooooooooooooo",
-]
 class Map(urwid.BoxWidget):
    _selectable = True
    ignore_focus = True
 
    
-   def __init__(self, p1, send_server, terrain=terrain):
-      self.send_server = send_server
-      self.terrain = list(terrain)
+   def __init__(self, p1, send, terrain):
+      self.send = send
+      self.terrain = terrain
       self.cols = len(self.terrain[0])
       self.rows = len(self.terrain)
       self.cast = thing.Cast()
@@ -30,6 +18,12 @@ class Map(urwid.BoxWidget):
       "Returns the preferred screen column (for the cursor) as an integer or None."
       maxcol, maxrow = size
       # We don't have a cursor in the map...
+      return None
+   
+   def pack(self, size, focus=False):
+      return (len(terrain[0]), len(terrain))
+
+   def get_cursor_coords(self, size):
       return None
 
    def keypress(self, size, key):
@@ -59,11 +53,12 @@ class Map(urwid.BoxWidget):
       
       # You can't walk through solid objects!
       okay_to_move = True
-      if self.terrain[newrow][newcol] != ' ':
+      if self.terrain[newrow][newcol] == 'X':
          okay_to_move = False
       # You can't walk over other players!
       for actor in self.cast:
          if ((actor.uid != self.p1.uid) 
+              and type(actor) == thing.Actor
               and actor.row == newrow 
               and actor.col == newcol):
             okay_to_move = False
@@ -71,9 +66,7 @@ class Map(urwid.BoxWidget):
          self.p1.row = newrow
          self.p1.col = newcol
          self._invalidate()
-         self.send_server(
-            {'actor':self.p1,
-             'cmd':'move_actor'})
+         self.send('move_actor')
 
    def render(self, size, focus=False):
       lines = list(self.terrain)
