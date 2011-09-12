@@ -11,12 +11,12 @@ Next, install the dependencies:
     sudo easy_install pyzmq
     sudo easy_install urwid
 
-Then start a server on your local machine:
+Then start a server (binds and listens on all interfaces):
 
     ./treasure_server
 
-Then start any number of clients, also on your local machine (for now):
+Then start any number of clients, where a.b.c.d is the IP address of the server:
 
-    ./treasure
+    ./treasure a.b.c.d                 # You can omit the IP address if the server is on localhost
 
 (For the moment, treasure acts like a brain-dead IRC server/client)
