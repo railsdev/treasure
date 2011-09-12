@@ -1,62 +1,88 @@
 #!/usr/bin/env python
 
-import time, urwid, zmq
+import optparse, time, urwid, zmq
+import thing, world
+
+parser = optparse.OptionParser()
+options, args = parser.parse_args()
+
+server_host = 'localhost'
+if len(args) > 0:
+   server_host = args[0]
 
 context = zmq.Context()
 
 # Socket to submit requests to server, receive replies
-global req_socket
-req_socket = context.socket(zmq.REQ)
-req_socket.connect("tcp://localhost:5555")
+global push_socket
+push_socket = context.socket(zmq.PUSH)
+push_socket.connect("tcp://%s:5555" % server_host)
 
 # Socket to receive broadcasts from server
 global sub_socket
 sub_socket = context.socket(zmq.SUB)
-sub_socket.connect("tcp://localhost:5556")
+sub_socket.connect("tcp://%s:5556" % server_host)
 sub_socket.setsockopt(zmq.SUBSCRIBE, "")
 
-# Client info
-global name
+def send_server(something):
+   global push_socket
+   push_socket.send_pyobj(something)
+
+# Player 1 (this client's main player)
+global p1
 name = raw_input("What is your name? ")
+p1 = thing.Actor(1,1, uid=name)
 
 print "Sending..."
-req_socket.send_pyobj({'name':name,'cmd':'connect'})
-
-# Get the reply.
-reply = req_socket.recv_pyobj()
-print "Received reply ", "[", reply, "]"
+push_socket.send_pyobj({'actor':p1,'cmd':'connect'})
 
 # Handle network traffic received on the subscription socket
 def handle_network():
    global loop
    global frame
+   global p1
    try:
-      news = sub_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
+      server_msg = sub_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
    except zmq.core.error.ZMQError:
       pass
    else:
-      frame.get_body().body.contents.append(urwid.Text("%s" % news))
-      loop.draw_screen()
+      # Process input
+      dirty = True
+      # Actor-based events
+      if server_msg.has_key('actor'):
+         actor = server_msg['actor']
+         cmd = server_msg['cmd']
+         if actor.uid == p1.uid:
+            # We already know what we have done, so ignore it
+            dirty = False
+         elif cmd in ['actor_enters', 'actor_moved']:
+            map.update_actor(actor)
+         elif cmd == 'actor_exits':
+            map.rm_actor(actor)
+         elif cmd == 'actor_speaks':
+            frame.header = urwid.Filler(urwid.Text(server_msg['chat_content']))
+      if dirty:
+         loop.draw_screen()
    loop.event_loop.alarm(.01, handle_network)
 
 # Handle any input that doesn't get handled by the focused widget
 def main_input_handler(input):
-   global req_socket
-   global name
+   global push_socket
+   global p1
+   global frame
    if input == 'esc':
-      req_socket.send_pyobj(
-         {'name':name,
-          'cmd':'disconnect'})
-      req_socket.recv_pyobj()
+      push_socket.send_pyobj(
+         {'cmd':'disconnect',
+          'actor':p1})
       raise urwid.ExitMainLoop()
    if input == 'window resize':
       pass
+   elif input == 'tab':
+      frame.set_focus('footer')
    else:
-      req_socket.send_pyobj(
-         {'name':name,
+      push_socket.send_pyobj(
+         {'actor':p1,
           'cmd':'chat',
           'chat_content':input})
-      req_socket.recv_pyobj()
 
 # Named color schemes we can use in our application
 palette = [
@@ -65,33 +91,30 @@ palette = [
 
 class ChatEntry(urwid.Edit):
    def keypress(self, size, input):
-      global req_socket
-      global name
+      global push_socket
+      global p1
       if input == 'enter':
          chat_content = self.get_edit_text()
          self.set_edit_text('')
-         req_socket.send_pyobj(
-            {'name':name,
+         push_socket.send_pyobj(
+            {'actor':p1,
              'cmd':'chat',
              'chat_content':chat_content})
-         req_socket.recv_pyobj()
       else:
          return super(ChatEntry, self).keypress(size, input)
          
       
 
 global frame
+global map
+map = world.Map(p1, send_server)
 frame = urwid.Frame(
-   urwid.ListBox([]), 
+   map, 
    header=urwid.AttrMap(urwid.Text('Treasure Hunter 0.1'), 'header'),
    footer=ChatEntry())
-frame.set_focus('footer')
-
-import map
-main_map = map.Map()
 
 # Create the main loop
 global loop
-loop = urwid.MainLoop(main_map, palette, unhandled_input=main_input_handler)
+loop = urwid.MainLoop(frame, palette, unhandled_input=main_input_handler)
 loop.event_loop.alarm(0, handle_network)
 loop.run()
