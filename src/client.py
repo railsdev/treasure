@@ -1,25 +1,34 @@
 #!/usr/bin/env python
 
-import optparse, time, urwid, zmq
-import util, thing, widgets, world
+import optparse, sys
 
 #-------------------------------------------------------------------------------
 # COMMAND-LINE PARSING
 
-server_host = 'localhost'
+name = 'Uninitialized'
 if __name__ == '__main__':
-   parser = optparse.OptionParser()
+   parser = optparse.OptionParser(usage="treasure [options] (p1name)")
+   parser.add_option('-s', '--server', dest='server', action='store', default='localhost', help='Domain name or IP address of server to connect to.  Defaults to localhost.')
    options, args = parser.parse_args()
 
    if len(args) > 0:
-      server_host = args[0]
+      name = args[0]
+   else:
+      parser.print_help()
+      sys.exit(2)
+
+import pygame, time, zmq
+pygame.init()
+import gfx, util, thing, widgets, world
 
 #-------------------------------------------------------------------------------
 # GLOBALS
 
-global frame ; frame = None
-global loop  ; loop  = None
-global map   ; map   = None
+global p1          # Player 1 object (i.e. THIS player)
+global sub_socket  # Subscription socket (receive events from server)
+global push_socket # Push socket (send events to server)
+global worldmap
+worldmap = None
 
 #-------------------------------------------------------------------------------
 # ZMQ INITIALIZATION
@@ -27,27 +36,36 @@ global map   ; map   = None
 context = zmq.Context()
 
 # Socket to receive broadcasts from server
-global sub_socket
 sub_socket = context.socket(zmq.SUB)
-sub_socket.connect("tcp://%s:5556" % server_host)
+sub_socket.connect("tcp://%s:5556" % options.server)
 sub_socket.setsockopt(zmq.SUBSCRIBE, "all")
-print "Connecting to server..."
-sub_socket.recv()
+print "Connecting to server ...",
+sys.stdout.flush()
+sub_socket.recv()  # Will hang forever if no server.  Perhaps we should add a timeout.
+print "success!"
 
 # Socket to submit requests to server, receive replies
-global push_socket
 push_socket = context.socket(zmq.PUSH)
-push_socket.connect("tcp://%s:5555" % server_host)
+push_socket.connect("tcp://%s:5555" % options.server)
 
 
-# Function to send info to server
-def send(cmd, **kwargs):
+def send(command, **kwargs):
+   """
+   Send information to the server.
+   
+   command - A command string the server will accept.
+   
+   Depending upon the command, you will likely need additional named arguments.
+   All named arguments will get passed through to the server.
+   """
    global push_socket
    global p1
-   d = {'actor':p1,
-       'cmd':cmd}
-   d.update(kwargs)
-   push_socket.send_pyobj(d)
+   cmd_dict = {
+      'cmd':command,
+      'actor':p1,
+      }
+   cmd_dict.update(kwargs)
+   push_socket.send_pyobj(cmd_dict)
 
 
 # Function to receive info from server
@@ -68,10 +86,8 @@ def recv():
 
 # Handle network traffic received on the subscription socket
 def handle_network():
-   global loop
-   global frame
    global p1
-   global map
+   global worldmap
    server_msg = recv()
    if server_msg:
       # Process input
@@ -84,60 +100,77 @@ def handle_network():
             # We already know what we have done, so ignore it
             dirty = False
          elif cmd in ['actor_enters', 'actor_moved']:
-            if map:
-               map.update_actor(actor)
+            if worldmap:
+               worldmap.update_actor(actor)
          elif cmd == 'actor_exits':
-            if map:
-               map.rm_actor(actor)
+            if worldmap:
+               worldmap.rm_actor(actor)
          elif cmd == 'actor_speaks':
-            frame.header = urwid.Text(server_msg['chat_content'])
+            print server_msg['chat_content']
       # Non-actor-based events
       elif server_msg.has_key('cmd'):
          cmd = server_msg['cmd']
          if cmd == 'set_map':
-            map = world.Map(p1, send, server_msg['terrain'])
-            frame.set_body(map)
+            worldmap = world.Map(p1, send, server_msg['terrain'])
       if dirty:
-         loop.draw_screen()
-   loop.event_loop.alarm(.01, handle_network)
+         # need to update the screen
+         pass
 
-
-# Handle any input that doesn't get handled by the focused widget
-def main_input_handler(input):
-   global push_socket
-   global p1
-   global frame
-   if input == 'esc':
-      send('disconnect')
-      raise urwid.ExitMainLoop()
-   if input == 'window resize':
+def handle_keypress(event):
+   global worldmap
+   key = event.key
+   if key == pygame.K_ESCAPE:
+      quit()
+   elif event.type == pygame.KEYDOWN:
+      worldmap.keypress(event.key)
+   elif event.type == pygame.KEYUP:
       pass
-   elif input == 'tab':
-      frame.set_focus('footer')
-   else:
-      send('chat', chat_content=input)
-         
-     
-if __name__ == '__main__':
-   # Named color schemes we can use in our application
-   palette = [
-      ('header', 'light red', 'black', 'standout')
-   ]
+#   print pygame.key.name(key)
 
+
+def handle_graphics(window):
+   global worldmap
+   # Black background
+   window.fill(gfx.BLACK)
+   # Center line
+   pygame.draw.line(window, gfx.GREEN, (512,0), (512,512))
+   # World map
+   if worldmap:
+      gfx.render_world(window, worldmap)
+   # HUD
+   gfx.render_text(window)
+   pygame.display.flip()
+
+def quit():
+   send('actor_exits')
+   pygame.quit()
+   sys.exit()
+
+if __name__ == '__main__':
    # Player 1 (this client's main player)
-   global p1
-   name = raw_input("What is your name? ")
    p1 = thing.Actor(1,1, uid=name)
    sub_socket.setsockopt(zmq.SUBSCRIBE, p1.uid)
 
    send('connect')
 
-   frame = urwid.Frame(
-      urwid.SolidFill('X'), 
-      header=urwid.AttrMap(urwid.Text('Treasure Hunter 0.1'), 'header'),
-      footer=widgets.ChatEntry())
+   # set up the window
+   window = pygame.display.set_mode((1024,512))
+   pygame.display.set_caption('Treasure Hunter 0.2')
+   pygame.event.set_blocked(pygame.MOUSEBUTTONDOWN)
+   pygame.event.set_blocked(pygame.MOUSEBUTTONUP)
+   pygame.event.set_blocked(pygame.MOUSEMOTION)
 
-   # Create the main loop
-   loop = urwid.MainLoop(frame, palette, unhandled_input=main_input_handler)
-   loop.event_loop.alarm(0, handle_network)
-   loop.run()
+   while True:
+      handle_graphics(window)
+      handle_network()
+      for event in pygame.event.get():
+         if event.type == pygame.QUIT:
+            quit()
+         elif event.type in [pygame.KEYDOWN, pygame.KEYUP]:
+            handle_keypress(event)
+         elif event.type == pygame.ACTIVEEVENT:
+            pass
+         else:
+            print "Unhandled event:", event
+      time.sleep(.01)
+

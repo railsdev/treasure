@@ -35,7 +35,7 @@ class Pig(Actor):
    def __repr__(self):
       return "<Pig %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
 
-   def move(self):
+   def move(self, cast=None):
       direction = random.choice(['up', 'down', 'left', 'right'])
       # Attempt moving up to 5 times (we'll hit walls a lot)
       for i in range(5):
@@ -55,6 +55,9 @@ class Pig(Actor):
             continue
          if (self.terrain[newrow][newcol] == 'X'):
             continue
+         if cast.occupies(newrow, newcol):
+            continue
+#          print self.uid, "moving from (%d,%d) to (%d,%d)" % (self.row, self.col, newrow, newcol)
          self.row = newrow
          self.col = newcol
          return True
@@ -108,3 +111,9 @@ class Cast(dict):
          self.add_actor(actor)
       else:
          self[actor.uid] = actor
+
+   def occupies(self, row, col):
+      for key in self.keys():
+         if (self[key].row == row) and (self[key].col == col):
+            return True
+      return False

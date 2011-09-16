@@ -17,58 +17,39 @@ pub_socket.bind("tcp://*:5556")
 def send(pyobj, recipient='all'):
    pub_socket.send(recipient + ':' + util.pickle(pyobj))
 
-# ┌─┬┐
-# │ ││
-# ├─┼┤
-# └─┴┘
-
-# terrain = [
-# b"┌────────────────────────────────────────────────────────────┐",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"│                                                            │",
-# b"└────────────────────────────────────────────────────────────┘",
-# ]
 terrain = [
-"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      X",
-"X              X                        X       X      X",
-"X      X       X                                X      X",
-"X  XXXXX       X                                X      X",
-"X              X                                XXX XXXX",
-"X                                       X              X",
-"X                                       X              X",
-"X                                       XXXXXXXXXXXXXX X",
-"X              XXXXXXXXXXXXXXXXXXX                     X",
-"XXXXXX         X                 X      XXXXXXXXX XXXXXX",
-"X        X     X                 X              X X    X",
-"X       XX     X                 X              X      X",
-"X   XXXXXX     X                 X              XXX    X",
-"X        X     X                 X                X    X",
-"XXXXXX   X     X                 X                X    X",
-"X        X     X                 X                X    X",
-"X   XXXXXX     XXXXXXXXX XXXXXXXXX                X    X",
-"X                                                      X",
-"XXXXXXXX                         XXXXXXXXXXXXXXXXXX    X",
-"X                                                      X",
-"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+"X                              X",
+"                 X XXX          ",
+"                 X   X          ",
+"       X X       XXX X          ",
+"        X            X          ",
+"       X X         XXX          ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"     XXXXXXXXXXXXXXXXXX         ",
+"          X     X               ",
+"          X     X               ",
+"          X     X               ",
+"          X     X               ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"X                              X",
 ]
 
 cast = thing.Cast()
@@ -135,7 +116,7 @@ while True:
    if heartbeat % pig_delay == 0:
       for pig in cast:
          if type(pig) == thing.Pig:
-            if pig.move():
+            if pig.move(cast=cast):
                send({'actor':pig,
                      'cmd':'actor_moved'})
    heartbeat += 1
