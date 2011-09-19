@@ -20,7 +20,7 @@ if __name__ == '__main__':
 import pygame, time, zmq
 pygame.mixer.pre_init(44100, -16, 1, 2048)
 pygame.init()
-import gfx, util, thing, widgets, world
+import gfx, util, thing, world
 
 #-------------------------------------------------------------------------------
 # GLOBALS
@@ -127,6 +127,11 @@ def handle_keypress(event):
    if key == pygame.K_ESCAPE:
       quit()
    elif event.type == pygame.KEYDOWN:
+      if key == pygame.K_m:
+         if pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()
+         else:
+            pygame.mixer.music.play(-1)
       worldmap.keypress(event.key)
    elif event.type == pygame.KEYUP:
       pass
@@ -160,12 +165,12 @@ if __name__ == '__main__':
 
    # set up the window
    window = pygame.display.set_mode((1024,512))
-   pygame.display.set_caption('Treasure Hunter 0.2')
+   pygame.display.set_caption('Treasure Hunter 0.3')
    pygame.event.set_blocked(pygame.MOUSEBUTTONDOWN)
    pygame.event.set_blocked(pygame.MOUSEBUTTONUP)
    pygame.event.set_blocked(pygame.MOUSEMOTION)
 
-   pygame.mixer.music.set_volume(.3)
+   pygame.mixer.music.set_volume(.2)
    pygame.mixer.music.play(-1)
    while True:
       handle_graphics(window)

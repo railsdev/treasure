@@ -11,14 +11,22 @@ GREEN = (0, 255, 0)
 BLUE  = (0, 0, 255)
 
 # FONTS
-basicFont = pygame.font.SysFont('couriernew', 16)
-text = basicFont.render('Catch the pigs.  Arrow keys.  ESC to quit.', True, GREEN, BLACK)
+fontsize = 16
+marginwidth = 5
+linespacing = 5
+basicFont = pygame.font.SysFont('couriernew', fontsize)
+line1 = basicFont.render('Catch the pigs using the arrow keys.', True, GREEN, BLACK)
+line2 = basicFont.render("Press 'm' to toggle music.   ESC to quit.", True, GREEN, BLACK)
 
 def render_text(window):
-    textRect = text.get_rect()
-    textRect.left = window.get_rect().centerx + 5
-    textRect.top = window.get_rect().top
-    window.blit(text, textRect)
+    line1Rect = line1.get_rect()
+    line1Rect.left = window.get_rect().centerx + marginwidth
+    line1Rect.top = window.get_rect().top
+    window.blit(line1, line1Rect)
+    line2Rect = line2.get_rect()
+    line2Rect.left = window.get_rect().centerx + marginwidth
+    line2Rect.top = window.get_rect().top + (fontsize + linespacing)
+    window.blit(line2, line2Rect)
 
 
 def render_world(window, world):

@@ -3,5 +3,13 @@
 # I found this handy way to delete the shortest match of a substring from the end of a string:
 # ${string%substring}
 
-# Take the full path, subtract the name of this script (treasure), then append /src/main.py and run
-${0%treasure}/src/client.py $@
+# See if python in the path works
+if /usr/bin/env python -c "import pygame, zmq" 2> /dev/null ; then 
+    # Take the full path, subtract the name of this script (treasure), then append /src/main.py and run
+    ${0%treasure}/src/client.py $@
+# See if the typical system python works
+elif /usr/bin/python -c "import pygame, zmq" 2> /dev/null ; then
+    /usr/bin/python ${0%treasure}/src/client.py $@
+else
+    echo 'Sorry, I could not find an installation of python with working pygame and pyzmq modules installed!'
+fi
