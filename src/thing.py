@@ -99,12 +99,10 @@ class Cast(dict):
    # Other functions
    def add_actor(self, actor):
       self.__setitem__(actor.uid, actor)
-      print "Actors", self.order
 
    def rm_actor(self, actor):
       del self[actor.uid]
       self.index = -1
-      print "Remaing actors", self.order
       
    def update_actor(self, actor):
       if not self.has_key(actor.uid):
@@ -117,3 +115,32 @@ class Cast(dict):
          if (self[key].row == row) and (self[key].col == col):
             return True
       return False
+
+
+
+class ScoreBoard(object):
+   def __init__(self):
+      self.scores = {}
+
+   def modify_score(self, amount, uid):
+      if self.scores.has_key(uid):
+         self.scores[uid] += amount
+      else:
+         self.scores[uid] = amount
+
+   def rm_score(self, uid):
+      if self.scores.has_key(uid):
+         del(self.scores[uid])
+         
+   # Iterator functions
+   def __iter__(self):
+      self.sorted_list = [x for x in sorted(self.scores.iteritems(), key=lambda (k,v): (v,k))]
+      return self
+
+
+   def next(self):
+      """Returns (uid, score)"""
+      if len(self.sorted_list) > 0:
+         return self.sorted_list.pop()
+      else:
+         raise StopIteration

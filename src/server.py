@@ -61,6 +61,7 @@ cast.add_actor(thing.Pig(terrain))
 # Main Loop
 heartbeat = 0
 pig_delay = 75 
+scoreboard = thing.ScoreBoard()
 while True:
    try:
       msg = pull_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
@@ -76,6 +77,9 @@ while True:
          send({'cmd':'set_map',
                'terrain':terrain}, recipient=actor.uid)
          # Let the new client know about everyone else:
+         scoreboard.modify_score(0, actor.uid)
+         send({'cmd':'update_scoreboard',
+               'scoreboard':scoreboard})
          for curr_actor in cast:
             send(
                {'actor':curr_actor,
@@ -90,6 +94,9 @@ while True:
             {'actor':actor,
              'cmd':'actor_exits'})
          cast.rm_actor(actor)
+         scoreboard.rm_score(actor.uid)
+         send({'cmd':'update_scoreboard',
+               'scoreboard':scoreboard})
       elif msg['cmd'] == 'chat':
          send(
             {'actor':actor,
@@ -101,6 +108,9 @@ while True:
          for pig in cast:
             if (type(pig) == thing.Pig) and actor.collide(pig):
                print actor.uid, "caught", pig.uid
+               scoreboard.modify_score(1, actor.uid)
+               send({'cmd':'update_scoreboard',
+                     'scoreboard':scoreboard})
                cast.rm_actor(pig)
                send({'actor':pig,
                      'cmd':'actor_exits'})

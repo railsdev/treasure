@@ -17,7 +17,7 @@ if __name__ == '__main__':
       parser.print_help()
       sys.exit(2)
 
-import pygame, time, zmq
+import pygame, zmq
 pygame.mixer.pre_init(44100, -16, 1, 2048)
 pygame.init()
 import gfx, util, thing, world
@@ -117,6 +117,8 @@ def handle_network():
          cmd = server_msg['cmd']
          if cmd == 'set_map':
             worldmap = world.Map(p1, send, server_msg['terrain'])
+         elif cmd == 'update_scoreboard':
+            gfx.set_scoreboard(server_msg['scoreboard'])
       if dirty:
          # need to update the screen
          pass
@@ -172,6 +174,8 @@ if __name__ == '__main__':
 
    pygame.mixer.music.set_volume(.2)
    pygame.mixer.music.play(-1)
+   
+   clock = pygame.time.Clock()
    while True:
       handle_graphics(window)
       handle_network()
@@ -188,5 +192,5 @@ if __name__ == '__main__':
                   oink.play()
          else:
             print "Unhandled event:", event
-      time.sleep(.01)
+      clock.tick(100)
 
