@@ -59,6 +59,8 @@ class Map(object):
 
    
    def rm_actor(self, actor):
+      if type(actor) == thing.Pig:
+         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='oink'))
       self.cast.rm_actor(actor)
       self.dirty = True
    

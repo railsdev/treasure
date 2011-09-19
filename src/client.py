@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import optparse, sys
+import optparse, os, sys
 
 #-------------------------------------------------------------------------------
 # COMMAND-LINE PARSING
@@ -18,6 +18,7 @@ if __name__ == '__main__':
       sys.exit(2)
 
 import pygame, time, zmq
+pygame.mixer.pre_init(44100, -16, 1, 2048)
 pygame.init()
 import gfx, util, thing, widgets, world
 
@@ -29,6 +30,10 @@ global sub_socket  # Subscription socket (receive events from server)
 global push_socket # Push socket (send events to server)
 global worldmap
 worldmap = None
+
+# Sounds
+oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'oink.ogg'))
+pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'treasure_music.ogg'))
 
 #-------------------------------------------------------------------------------
 # ZMQ INITIALIZATION
@@ -142,7 +147,7 @@ def handle_graphics(window):
    pygame.display.flip()
 
 def quit():
-   send('actor_exits')
+   send('disconnect')
    pygame.quit()
    sys.exit()
 
@@ -160,6 +165,8 @@ if __name__ == '__main__':
    pygame.event.set_blocked(pygame.MOUSEBUTTONUP)
    pygame.event.set_blocked(pygame.MOUSEMOTION)
 
+   pygame.mixer.music.set_volume(.3)
+   pygame.mixer.music.play(-1)
    while True:
       handle_graphics(window)
       handle_network()
@@ -170,6 +177,10 @@ if __name__ == '__main__':
             handle_keypress(event)
          elif event.type == pygame.ACTIVEEVENT:
             pass
+         elif event.type == pygame.USEREVENT:
+            if event.subtype == 'sound':
+               if event.sound == 'oink':
+                  oink.play()
          else:
             print "Unhandled event:", event
       time.sleep(.01)
