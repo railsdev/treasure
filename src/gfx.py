@@ -9,7 +9,7 @@ RED   = (255, 0, 0)
 PINK  = (255, 128, 128)
 GREEN = (0, 255, 0)
 BLUE  = (0, 0, 255)
-LIGHTBLUE = (64, 64, 255)
+LIGHTBLUE = (48, 48, 255)
 
 # FONTS
 fontsize = 16
