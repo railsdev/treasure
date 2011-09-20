@@ -126,20 +126,22 @@ def handle_network():
          pass
 
 def handle_keypress(event):
+#   print pygame.key.name(event.key)
    global worldmap
-   key = event.key
-   if key == pygame.K_ESCAPE:
+   # Quit?
+   if event.key == pygame.K_ESCAPE:
       quit()
-   elif event.type == pygame.KEYDOWN:
-      if key == pygame.K_m:
+   # Movement?
+   if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
+      p1.control(event)
+   # Global toggles?
+   if event.type == pygame.KEYDOWN:
+      # Toggle music
+      if event.key == pygame.K_m:
          if pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
          else:
             pygame.mixer.music.play(-1)
-      worldmap.keypress(event.key)
-   elif event.type == pygame.KEYUP:
-      pass
-#   print pygame.key.name(key)
 
 
 def handle_graphics(window):
@@ -178,9 +180,10 @@ if __name__ == '__main__':
    pygame.mixer.music.play(-1)
    
    clock = pygame.time.Clock()
-   while True:
-      handle_graphics(window)
+   delta = clock.tick(100)
+   while not worldmap:
       handle_network()
+   while True:
       for event in pygame.event.get():
          if event.type == pygame.QUIT:
             quit()
@@ -189,6 +192,8 @@ if __name__ == '__main__':
          elif event.type == pygame.ACTIVEEVENT:
             pass
          elif event.type == pygame.USEREVENT:
+            if event.subtype == 'move':
+               worldmap.move_player(event.direction)
             if event.subtype == 'sound':
                if event.sound == 'oink':
                   oink.play()
@@ -198,5 +203,8 @@ if __name__ == '__main__':
                   byebye.play()
          else:
             print "Unhandled event:", event
-      clock.tick(100)
+      worldmap.update(delta)
+      handle_graphics(window)
+      handle_network()
+      delta = clock.tick(100)
 

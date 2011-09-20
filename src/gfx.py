@@ -9,6 +9,7 @@ RED   = (255, 0, 0)
 PINK  = (255, 128, 128)
 GREEN = (0, 255, 0)
 BLUE  = (0, 0, 255)
+LIGHTBLUE = (64, 64, 255)
 
 # FONTS
 fontsize = 16
@@ -17,9 +18,11 @@ linespacing = 5
 basicFont = pygame.font.SysFont('couriernew', fontsize)
 line1 = basicFont.render('Catch the pigs using the arrow keys.', True, GREEN, BLACK)
 line2 = basicFont.render("Press 'm' to toggle music.   ESC to quit.", True, GREEN, BLACK)
+letterFont = pygame.font.SysFont('arial', 12)
 
 scoreboard_header = basicFont.render("SCORES", True, GREEN, BLACK)
 score_lines = []
+letters = {}
 
 def set_scoreboard(scoreboard):
     global score_lines
@@ -53,6 +56,7 @@ def render_text(window):
 
 
 def render_world(window, world):
+    global letters
     tile_size = 16
     # Draw the terrain
     for row, rownum in zip(world.terrain, range(len(world.terrain))):
@@ -63,11 +67,22 @@ def render_world(window, world):
                     (colnum * tile_size, rownum * tile_size, tile_size, tile_size))
     # Draw the Actors
     for actor in world.cast:
+        letter = None
         if type(actor) == thing.Actor:
-            color = BLUE
+            color = LIGHTBLUE
+            letter = actor.uid[0]
+            if not letters.has_key(letter):
+                letters[letter] = letterFont.render(letter, True, WHITE, LIGHTBLUE)
         else:
             color = PINK
+        tile_rect = pygame.Rect(actor.col * tile_size, actor.row * tile_size, tile_size, tile_size)
         pygame.draw.rect(
             window, color, 
-            (actor.col * tile_size, actor.row * tile_size, tile_size, tile_size))
+            tile_rect)
+        if letter:
+            letter_rect = letters[letter].get_rect()
+            letter_rect.centerx = tile_rect.centerx - 1
+            letter_rect.top = tile_rect.top + 2
+            window.blit(letters[letter], letter_rect)
+        
             

@@ -1,7 +1,8 @@
-import random
+import pygame, random
 random.seed()
 
 class Actor(object):
+   MOVE_DELAY = 150
    def __init__(self, row, col, uid=None, symbol=None):
       if uid and (type(uid) == str):
          self.uid = uid
@@ -13,6 +14,34 @@ class Actor(object):
       self.col = col
       self.symbol=symbol
       self.type = type
+      self.direction_stack = []
+      self.timer = 0
+
+   def control(self, event):
+      # Movement
+      if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
+         if event.type == pygame.KEYDOWN:
+            self.direction_stack.insert(0, event.key)
+         elif event.type == pygame.KEYUP:
+            try:
+               self.direction_stack.remove(event.key)
+            except ValueError:
+               pass
+      # If we think we're stopped, but there's 
+
+   def update(self, delta):
+      # Update the move timer
+      if self.timer:
+         self.timer -= delta
+         if self.timer < 0:
+            self.timer = 0
+      # Can we move now?
+      if (self.timer == 0) and self.direction_stack:
+         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='move', direction=self.direction_stack[0]))
+         self.timer = self.MOVE_DELAY
+
+   def reset_move_timer(self):
+      self.timer = 0
 
    def collide(self, other):
       return (other.row == self.row) and (other.col == self.col)

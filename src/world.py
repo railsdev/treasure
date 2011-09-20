@@ -10,30 +10,27 @@ class Map(object):
       self.dirty   = True # Set to false whenever the graphics modules draws the map
 
    
-   def keypress(self, key):
+   def move_player(self, direction):
       bound_row = len(self.terrain) - 1
       bound_col = len(self.terrain[0]) - 1
       newrow = self.p1.row
       newcol = self.p1.col
-      if key == pygame.K_UP:
+      if direction == pygame.K_UP:
          newrow -= 1
          if newrow < 0:
             newrow = 0
-      elif key == pygame.K_DOWN:
+      elif direction == pygame.K_DOWN:
          newrow += 1
          if newrow > bound_row:
             newrow = bound_row
-      elif key == pygame.K_RIGHT:
+      elif direction == pygame.K_RIGHT:
          newcol += 1
          if newcol > bound_col:
             newcol = bound_col
-      elif key == pygame.K_LEFT:
+      elif direction == pygame.K_LEFT:
          newcol -= 1
          if newcol < 0:
             newcol = 0
-      else:
-         # not a movement key
-         return
       
       # You can't walk through solid objects!
       okay_to_move = True
@@ -51,7 +48,12 @@ class Map(object):
          self.p1.col = newcol
          self.send('move_actor')
          self.dirty = True
+      else:
+         self.p1.reset_move_timer()
 
+
+   def update(self, delta):
+      self.p1.update(delta)
       
    def add_actor(self, actor):
       if type(actor) == thing.Actor:
