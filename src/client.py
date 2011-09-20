@@ -33,6 +33,8 @@ worldmap = None
 
 # Sounds
 oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'oink.ogg'))
+iamhere = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'iamhere.ogg'))
+byebye = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'byebye.ogg'))
 pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'treasure_music.ogg'))
 
 #-------------------------------------------------------------------------------
@@ -190,6 +192,10 @@ if __name__ == '__main__':
             if event.subtype == 'sound':
                if event.sound == 'oink':
                   oink.play()
+               if event.sound == 'iamhere':
+                  iamhere.play()
+               if event.sound == 'byebye':
+                  byebye.play()
          else:
             print "Unhandled event:", event
       clock.tick(100)

@@ -54,6 +54,8 @@ class Map(object):
 
       
    def add_actor(self, actor):
+      if type(actor) == thing.Actor:
+         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='iamhere'))
       self.cast.add_actor(actor)
       self.dirty = True
 
@@ -61,9 +63,14 @@ class Map(object):
    def rm_actor(self, actor):
       if type(actor) == thing.Pig:
          pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='oink'))
+      elif type(actor) == thing.Actor:
+         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='byebye'))
       self.cast.rm_actor(actor)
       self.dirty = True
    
    def update_actor(self, actor):
-      self.cast.update_actor(actor)
-      self.dirty = True
+      if self.cast.has_actor(actor):
+         self.cast.update_actor(actor)
+         self.dirty = True
+      else:
+         self.add_actor(actor)

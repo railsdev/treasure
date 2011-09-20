@@ -116,6 +116,9 @@ class Cast(dict):
             return True
       return False
 
+   def has_actor(self, actor):
+      return self.has_key(actor.uid)
+
 
 
 class ScoreBoard(object):
