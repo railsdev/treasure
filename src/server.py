@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-import time, zmq
+import pygame, sys, zmq
 import thing, util
 
 context = zmq.Context()
@@ -17,39 +16,41 @@ pub_socket.bind("tcp://*:5556")
 def send(pyobj, recipient='all'):
    pub_socket.send(recipient + ':' + util.pickle(pyobj))
 
+pygame.init()
+
 terrain = [
-"X                  X         X X",
-"                 X XXXXXXX X X  ",
-"      X   X      X   X   X X X  ",
-"       X X       XXX X X X X X  ",
-"        X        X   X X X X X  ",
-"       X X       X XXX X X X X  ",
-"      X   X      X     X   X X  ",
-"                 XXXXXXXXXXX X  ",
-"                                ",
-"                                ",
-"XXXX                            ",
-"            XXX  XXX  X X  XXX  ",
-"XXXX          X  X X  X X  X    ",
+"                   XXX   X      ",
+"                 X XXX X X XXXX ",
+" X   X           X   X X X X    ",
+"   X    X        XXX X X X X XXX",
+"       X         X   X X X X    ",
+"X X  X           X XXX X X XXXX ",
+"          X      X     X   X    ",
+"   X       X     XXXXXXXX XX XXX",
+"         XXXX           X X     ",
+"           X            X X     ",
+"XXXX X    X                     ",
+"      XX    XXX  XXX  X X  XXX  ",
+"XXXX X        X  X X  X X  X    ",
 "            XXX  X X  XXX  XXX  ",
 "                                ",
 "                                ",
-"     XXXXXXXXXXXXXXXXXX         ",
+"     XXXXXXXXXXXX XXXXX         ",
+"     X          X     X         ",
 "     X    X     X     X         ",
-"     X    X     X     X         ",
-"     X    X     X     X         ",
-"     X    X     X     X    XXXXX",
+"     X    X           X         ",
+"     X XXXX XXXXXXXXXXX    XXXXX",
 "                                ",
-"                                ",
-"                    X           ",
-"     X XXXX        XXX          ",
-" XXXXX    X       XXXXX  XXXXXX ",
-"     XXXX X         X    X      ",
-"XXXX XX   X              X      ",
-"   X XX XXXXXXX          X      ",
-" X      X                X      ",
+"   XXXX                  XXXXX  ",
+"XXXX                     X      ",
+"     X XXXX        X X   X      ",
+" XXXXX    X       XX XX  XX   XX",
+"     XXXX X      XXX XXX  X     ",
+"XXXX XX   X     XXXX XXXX X     ",
+"   X XX XXXXXXX    X X    X     ",
+" X      X                XXXXX  ",
 "  XXXXXXXXXX XXXXXXXX    X      ",
-"X                        X     X",
+"X                        X      ",
 ]
 
 cast = thing.Cast()
@@ -58,10 +59,19 @@ cast.add_actor(thing.Pig(terrain))
 cast.add_actor(thing.Pig(terrain))
 cast.add_actor(thing.Pig(terrain))
 
+def quit():
+   send({'cmd':'server_quit'})
+   print "Server exiting."
+   pygame.quit()
+   sys.exit()
+
 # Main Loop
+MAX_FPS = 200
 heartbeat = 0
-pig_delay = 75 
 scoreboard = thing.ScoreBoard()
+clock = pygame.time.Clock()
+delta = clock.tick(MAX_FPS)
+print "Server is running."
 while True:
    try:
       msg = pull_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
@@ -107,8 +117,8 @@ while True:
          # Did I catch a pig?
          for pig in cast:
             if (type(pig) == thing.Pig) and actor.collide(pig):
-               print actor.uid, "caught", pig.uid
-               scoreboard.modify_score(1, actor.uid)
+               print actor.uid, "caught", pig.uid, "for", pig.value, "points"
+               scoreboard.modify_score(pig.value, actor.uid)
                send({'cmd':'update_scoreboard',
                      'scoreboard':scoreboard})
                cast.rm_actor(pig)
@@ -121,13 +131,17 @@ while True:
          send(
             {'actor':actor,
              'cmd':'actor_moved'})
-   if heartbeat % 100 == 0:
+   if heartbeat % MAX_FPS == 0:
       send({'heartbeat':heartbeat})
-   if heartbeat % pig_delay == 0:
-      for pig in cast:
-         if type(pig) == thing.Pig:
-            if pig.move(cast=cast):
-               send({'actor':pig,
-                     'cmd':'actor_moved'})
+   for pig in cast.update_pigs(delta):
+      send({'actor':pig,
+            'cmd':'actor_moved'})
+   for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+         quit()
+      if event.type == pygame.KEYDOWN:
+         if event.key == pygame.K_ESCAPE:
+            quit()
    heartbeat += 1
-   time.sleep(.01)
+   delta = clock.tick(MAX_FPS)
+   

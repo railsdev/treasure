@@ -7,7 +7,7 @@ class Map(object):
       self.cast    = thing.Cast()
       self.p1      = p1
       self.cast.add_actor(p1)
-      self.dirty   = True # Set to false whenever the graphics modules draws the map
+      self.dirty   = True  # Set to false whenever the graphics modules draws the map
 
    
    def move_player(self, direction):
@@ -44,8 +44,7 @@ class Map(object):
               and actor.col == newcol):
             okay_to_move = False
       if okay_to_move:
-         self.p1.row = newrow
-         self.p1.col = newcol
+         self.p1.set_location(newrow, newcol)
          self.send('move_actor')
          self.dirty = True
       else:

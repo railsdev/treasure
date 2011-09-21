@@ -96,34 +96,39 @@ def handle_network():
    global p1
    global worldmap
    server_msg = recv()
+   # Process input
    if server_msg:
-      # Process input
-      dirty = True
       # Actor-based events
       if server_msg.has_key('actor'):
          actor = server_msg['actor']
          cmd = server_msg['cmd']
          if actor.uid == p1.uid:
             # We already know what we have done, so ignore it
-            dirty = False
-         elif cmd in ['actor_enters', 'actor_moved']:
+            pass
+         elif cmd == 'actor_enters':
+            if worldmap:
+               worldmap.update_actor(actor)
+            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
+         elif cmd == 'actor_moved':
             if worldmap:
                worldmap.update_actor(actor)
          elif cmd == 'actor_exits':
             if worldmap:
                worldmap.rm_actor(actor)
+            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
          elif cmd == 'actor_speaks':
             print server_msg['chat_content']
       # Non-actor-based events
       elif server_msg.has_key('cmd'):
          cmd = server_msg['cmd']
-         if cmd == 'set_map':
+         if cmd == 'server_quit':
+            print 'Server has quit...stopping client.'
+            quit()
+         elif cmd == 'set_map':
             worldmap = world.Map(p1, send, server_msg['terrain'])
          elif cmd == 'update_scoreboard':
             gfx.set_scoreboard(server_msg['scoreboard'])
-      if dirty:
-         # need to update the screen
-         pass
+            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
 
 def handle_keypress(event):
 #   print pygame.key.name(event.key)
@@ -144,15 +149,16 @@ def handle_keypress(event):
             pygame.mixer.music.play(-1)
 
 
-def handle_graphics(window):
+def handle_graphics(window, redraw=False):
    global worldmap
-   # Black background
-   window.fill(gfx.BLACK)
-   # Center line
-   pygame.draw.line(window, gfx.GREEN, (512,0), (512,512))
+   if redraw:
+      # Black background
+      window.fill(gfx.BLACK)
+      # Center line
+      pygame.draw.line(window, gfx.GREEN, (512,0), (512,512))
    # World map
    if worldmap:
-      gfx.render_world(window, worldmap)
+      gfx.render_world(window, worldmap, redraw)
    # HUD
    gfx.render_text(window)
    pygame.display.flip()
@@ -183,7 +189,9 @@ if __name__ == '__main__':
    delta = clock.tick(100)
    while not worldmap:
       handle_network()
+   handle_graphics(window, redraw=True)
    while True:
+      redraw = False
       for event in pygame.event.get():
          if event.type == pygame.QUIT:
             quit()
@@ -194,17 +202,19 @@ if __name__ == '__main__':
          elif event.type == pygame.USEREVENT:
             if event.subtype == 'move':
                worldmap.move_player(event.direction)
-            if event.subtype == 'sound':
+            elif event.subtype == 'sound':
                if event.sound == 'oink':
                   oink.play()
-               if event.sound == 'iamhere':
+               elif event.sound == 'iamhere':
                   iamhere.play()
-               if event.sound == 'byebye':
+               elif event.sound == 'byebye':
                   byebye.play()
+            elif event.subtype == 'redraw':
+               redraw = True
          else:
             print "Unhandled event:", event
       worldmap.update(delta)
-      handle_graphics(window)
+      handle_graphics(window, redraw)
       handle_network()
       delta = clock.tick(100)
 

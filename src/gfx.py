@@ -22,7 +22,8 @@ letterFont = pygame.font.SysFont('arial', 12)
 
 scoreboard_header = basicFont.render("SCORES", True, GREEN, BLACK)
 score_lines = []
-letters = {}
+actor_letters = {}
+pig_numbers = {}
 
 def set_scoreboard(scoreboard):
     global score_lines
@@ -55,34 +56,45 @@ def render_text(window):
         
 
 
-def render_world(window, world):
-    global letters
+def render_world(window, world, redraw=False):
+    global actor_letters
     tile_size = 16
     # Draw the terrain
-    for row, rownum in zip(world.terrain, range(len(world.terrain))):
-        for tile, colnum in zip(world.terrain[rownum], range(len(world.terrain[rownum]))):
-            if tile == 'X':
-                pygame.draw.rect(
-                    window, GREEN, 
-                    (colnum * tile_size, rownum * tile_size, tile_size, tile_size))
+    if redraw:
+        for row, rownum in zip(world.terrain, range(len(world.terrain))):
+            for tile, colnum in zip(world.terrain[rownum], range(len(world.terrain[rownum]))):
+                if tile == 'X':
+                    pygame.draw.rect(
+                        window, GREEN, 
+                        (colnum * tile_size, rownum * tile_size, tile_size, tile_size))
+    # Erase all the actor's old stuff
+    for actor in world.cast:
+        if (actor.old_row == None) or (actor.old_col == None):
+            continue
+        old_tile_rect = pygame.Rect(actor.old_col * tile_size, actor.old_row * tile_size, tile_size, tile_size)
+        pygame.draw.rect(window, BLACK, old_tile_rect)        
+
     # Draw the Actors
     for actor in world.cast:
-        letter = None
-        if type(actor) == thing.Actor:
-            color = LIGHTBLUE
-            letter = actor.uid[0]
-            if not letters.has_key(letter):
-                letters[letter] = letterFont.render(letter, True, WHITE, LIGHTBLUE)
-        else:
-            color = PINK
         tile_rect = pygame.Rect(actor.col * tile_size, actor.row * tile_size, tile_size, tile_size)
-        pygame.draw.rect(
-            window, color, 
-            tile_rect)
-        if letter:
-            letter_rect = letters[letter].get_rect()
+        if type(actor) == thing.Actor:
+            pygame.draw.rect(window, LIGHTBLUE, tile_rect)
+            letter = actor.uid[0]
+            if not actor_letters.has_key(letter):
+                actor_letters[letter] = letterFont.render(letter, True, WHITE, LIGHTBLUE)
+            letter_rect = actor_letters[letter].get_rect()
             letter_rect.centerx = tile_rect.centerx - 1
             letter_rect.top = tile_rect.top + 2
-            window.blit(letters[letter], letter_rect)
+            window.blit(actor_letters[letter], letter_rect)
+        elif type(actor) == thing.Pig:
+            pygame.draw.rect(window, PINK, tile_rect)
+            number = actor.value
+            if not pig_numbers.has_key(number):
+                pig_numbers[number] = letterFont.render(str(number), True, WHITE, PINK)
+            number_rect = pig_numbers[number].get_rect()
+            number_rect.centerx = tile_rect.centerx - 1
+            number_rect.top = tile_rect.top + 2
+            window.blit(pig_numbers[number], number_rect)
+        
         
             

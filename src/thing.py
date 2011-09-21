@@ -1,4 +1,4 @@
-import pygame, random
+import copy, pygame, random
 random.seed()
 
 class Actor(object):
@@ -10,8 +10,7 @@ class Actor(object):
             symbol = uid[0].upper()
       else:
          self.uid = str(id(self))
-      self.row = row
-      self.col = col
+      self.set_location(row, col, init=True)
       self.symbol=symbol
       self.type = type
       self.direction_stack = []
@@ -45,14 +44,29 @@ class Actor(object):
 
    def collide(self, other):
       return (other.row == self.row) and (other.col == self.col)
+
+   def set_location(self, row, col, init=False):
+      if init:
+         self.clear_old_location()
+      else:
+         self.old_row = self.row
+         self.old_col = self.col
+      self.row = row
+      self.col = col
+
+   def clear_old_location(self):
+      self.old_row = None
+      self.old_col = None
       
    def __repr__(self):
       return "<Actor %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
 
 class Pig(Actor):
+   PIG_MOVE_DELAY = 500
    def __init__(self, terrain):
       self.terrain = terrain
-      row, col = 0, 0
+      row = random.choice(range(len(terrain)))
+      col = random.choice(range(len(terrain[0])))
       while terrain[row][col] != ' ':
          row = random.choice(range(len(terrain)))
          col = random.choice(range(len(terrain[0])))
@@ -60,11 +74,20 @@ class Pig(Actor):
          row,
          col,
          uid='pig'+str(id(self)), symbol='p')
+      self.move_timer = self.PIG_MOVE_DELAY
+      self.value = random.choice(range(1,4))
 
    def __repr__(self):
       return "<Pig %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
 
-   def move(self, cast=None):
+   def update(self, delta, cast):
+      self.move_timer -= delta
+      if self.move_timer < 0:
+         self.move_timer = self.PIG_MOVE_DELAY
+         self.move(cast)
+         return True
+
+   def move(self, cast):
       direction = random.choice(['up', 'down', 'left', 'right'])
       # Attempt moving up to 5 times (we'll hit walls a lot)
       for i in range(5):
@@ -87,8 +110,7 @@ class Pig(Actor):
          if cast.occupies(newrow, newcol):
             continue
 #          print self.uid, "moving from (%d,%d) to (%d,%d)" % (self.row, self.col, newrow, newcol)
-         self.row = newrow
-         self.col = newcol
+         self.set_location(newrow, newcol)
          return True
       return False
          
@@ -116,7 +138,7 @@ class Cast(dict):
    # Return each actor (value), instead of the uid (key)
    def __iter__(self):
       self.index = 0
-      return self
+      return copy.deepcopy(self)
    
    def next(self):
       if self.index >= len(self.order) or self.index == -1:
@@ -148,6 +170,15 @@ class Cast(dict):
    def has_actor(self, actor):
       return self.has_key(actor.uid)
 
+   def update_pigs(self, delta):
+      moved = []
+      for uid in self.order:
+         curr_pig = self[uid]
+         if type(curr_pig) != Pig:
+            continue
+         if curr_pig.update(delta, self):
+            moved.append(curr_pig)
+      return moved
 
 
 class ScoreBoard(object):
