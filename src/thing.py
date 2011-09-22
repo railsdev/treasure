@@ -2,17 +2,48 @@ import copy, pygame, random
 random.seed()
 
 class Actor(object):
-   MOVE_DELAY = 150
-   def __init__(self, row, col, uid=None, symbol=None):
-      if uid and (type(uid) == str):
-         self.uid = uid
-         if not symbol:
-            symbol = uid[0].upper()
-      else:
-         self.uid = str(id(self))
+   def __init__(self, row, col):
       self.set_location(row, col, init=True)
+      self.uid = str(id(self))
+      
+   def collide(self, other):
+      if other == self:
+         return False
+      if (type(other) == tuple) or (type(other) == list):
+         other_row = other[0]
+         other_col = other[1]
+      else:
+         other_row = other.row
+         other_col = other.col
+      return (other_row == self.row) and (other_col == self.col)
+
+   def set_location(self, row, col, init=False):
+      if init:
+         self.clear_old_location()
+      else:
+         self.old_row = self.row
+         self.old_col = self.col
+      self.row = row
+      self.col = col
+
+   def clear_old_location(self):
+      self.old_row = None
+      self.old_col = None
+      
+   def __repr__(self):
+      return "<Actor %s (%d,%d)>" % (self.uid, self.row, self.col)
+   
+class Player(Actor):
+   MOVE_DELAY = 150
+   def __init__(self, row, col, name, symbol=None):
+      super(Player, self).__init__(row, col)
+      if name and (type(name) == str):
+         self.name = name
+      else:
+         self.name = 'Player' + self.uid
+      if not symbol:
+         symbol = name[0].upper()
       self.symbol=symbol
-      self.type = type
       self.direction_stack = []
       self.timer = 0
 
@@ -42,43 +73,37 @@ class Actor(object):
    def reset_move_timer(self):
       self.timer = 0
 
-   def collide(self, other):
-      return (other.row == self.row) and (other.col == self.col)
-
-   def set_location(self, row, col, init=False):
-      if init:
-         self.clear_old_location()
-      else:
-         self.old_row = self.row
-         self.old_col = self.col
-      self.row = row
-      self.col = col
-
-   def clear_old_location(self):
-      self.old_row = None
-      self.old_col = None
-      
    def __repr__(self):
-      return "<Actor %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
+      return "<Player %s/%s (%d,%d)>" % (self.name, self.uid, self.row, self.col)
+   
+   
+   def clone(self, other):
+      self.row             = other.row
+      self.col             = other.col
+      self.old_row         = other.old_row
+      self.old_col         = other.old_col
+      self.symbol          = other.symbol
+      self.direction_stack = other.direction_stack
+      self.timer           = other.timer
 
 class Pig(Actor):
    PIG_MOVE_DELAY = 500
    def __init__(self, terrain):
-      self.terrain = terrain
+      # Pick random starting location...that's not in a wall.
       row = random.choice(range(len(terrain)))
       col = random.choice(range(len(terrain[0])))
       while terrain[row][col] != ' ':
          row = random.choice(range(len(terrain)))
          col = random.choice(range(len(terrain[0])))
-      super(Pig, self).__init__(
-         row,
-         col,
-         uid='pig'+str(id(self)), symbol='p')
+      # Now that we have row and col, initialize superclass stuff
+      super(Pig, self).__init__(row, col)
+      # Pig-specific stuff...
+      self.terrain = terrain
       self.move_timer = self.PIG_MOVE_DELAY
       self.value = random.choice(range(1,4))
 
    def __repr__(self):
-      return "<Pig %s %s@(%d,%d)>" % (self.uid, self.symbol, self.row, self.col)
+      return "<Pig %s (%d,%d) %d pts>" % (self.uid, self.row, self.col, self.value)
 
    def update(self, delta, cast):
       self.move_timer -= delta
@@ -113,71 +138,75 @@ class Pig(Actor):
          self.set_location(newrow, newcol)
          return True
       return False
-         
+
+   def clone(self, other):
+      self.row        = other.row
+      self.col        = other.col
+      self.old_row    = other.old_row
+      self.old_col    = other.old_col
+      self.terrain    = other.terrain
+      self.move_timer = other.move_timer
+      self.value      = other.value
       
 
-class Cast(dict):
-   # Ordered dictionary behavior (3 functions)
-   def __init__(self, *args, **kwargs):
-      self.index = 0
-      self.order = []
-      super(Cast, self).__init__(*args, **kwargs)
-      
-   def __setitem__(self, key, value):
-      super(Cast, self).__setitem__(key, value)
-      try:
-         self.order.index(key)
-      except:
-         self.order.insert(0, key)
-      
-   def __delitem__(self, key):
-      super(Cast, self).__delitem__(key)
-      self.order.remove(key)
-      
-   # Iterator behavior (2 functions)
-   # Return each actor (value), instead of the uid (key)
-   def __iter__(self):
-      self.index = 0
-      return copy.deepcopy(self)
-   
-   def next(self):
-      if self.index >= len(self.order) or self.index == -1:
-         raise StopIteration
-      actor = self[self.order[self.index]]
-      self.index += 1
-      return actor
-   
-   # Other functions
-   def add_actor(self, actor):
-      self.__setitem__(actor.uid, actor)
+class Cast(object):
+   def __init__(self):
+      self.members = {
+         Player : [],
+         Pig    : [],
+         }
 
-   def rm_actor(self, actor):
-      del self[actor.uid]
-      self.index = -1
-      
-   def update_actor(self, actor):
-      if not self.has_key(actor.uid):
-         self.add_actor(actor)
+
+   def actors_of_type(self, actor_type):
+      if self.members.has_key(actor_type):
+         return self.members[actor_type]
       else:
-         self[actor.uid] = actor
+         return []
+
+   def remove(self, actor):
+      reference = self.find_actor(actor)
+      if reference:
+         self.members[type(actor)].remove(reference)
+
+
+   def find_actor(self, actor):
+      for reference in self.members[type(actor)]:
+         if actor.uid == reference.uid:
+            return reference
+      return None
+
+
+   def update(self, actor):
+      reference = self.find_actor(actor)
+      if reference:
+         reference.clone(actor)
+      else:
+         self.members[type(actor)].append(actor)
+
 
    def occupies(self, row, col):
-      for key in self.keys():
-         if (self[key].row == row) and (self[key].col == col):
+      other = Actor(row, col)
+      for player in self.members[Player]:
+         if player.collide(other):
+            return True
+      for pig in self.members[Pig]:
+         if pig.collide(other):
             return True
       return False
 
+
    def has_actor(self, actor):
-      return self.has_key(actor.uid)
+      match_list = [x for x in self.members[type(actor)] if actor.uid == x.uid]
+      if match_list:
+         return True
+      return False
+
 
    def update_pigs(self, delta):
       moved = []
-      for uid in self.order:
-         curr_pig = self[uid]
-         if type(curr_pig) != Pig:
-            continue
-         if curr_pig.update(delta, self):
-            moved.append(curr_pig)
+      for pig in self.members[Pig]:
+         if pig.update(delta, self):
+            moved.append(pig)
       return moved
 
 
@@ -185,15 +214,15 @@ class ScoreBoard(object):
    def __init__(self):
       self.scores = {}
 
-   def modify_score(self, amount, uid):
-      if self.scores.has_key(uid):
-         self.scores[uid] += amount
+   def modify_score(self, amount, name):
+      if self.scores.has_key(name):
+         self.scores[name] += amount
       else:
-         self.scores[uid] = amount
+         self.scores[name] = amount
 
-   def rm_score(self, uid):
-      if self.scores.has_key(uid):
-         del(self.scores[uid])
+   def rm_score(self, name):
+      if self.scores.has_key(name):
+         del(self.scores[name])
          
    # Iterator functions
    def __iter__(self):
@@ -202,7 +231,7 @@ class ScoreBoard(object):
 
 
    def next(self):
-      """Returns (uid, score)"""
+      """Returns (name, score)"""
       if len(self.sorted_list) > 0:
          return self.sorted_list.pop()
       else:

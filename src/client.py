@@ -69,7 +69,7 @@ def send(command, **kwargs):
    global p1
    cmd_dict = {
       'cmd':command,
-      'actor':p1,
+      'player':p1,
       }
    cmd_dict.update(kwargs)
    push_socket.send_pyobj(cmd_dict)
@@ -91,10 +91,12 @@ def recv():
 #-------------------------------------------------------------------------------
 # GAME LOGIC
 
+def userevent(subtype, **kwargs):
+   pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype=subtype, **kwargs))
+
 # Handle network traffic received on the subscription socket
 def handle_network():
    global p1
-   global worldmap
    server_msg = recv()
    # Process input
    if server_msg:
@@ -106,16 +108,13 @@ def handle_network():
             # We already know what we have done, so ignore it
             pass
          elif cmd == 'actor_enters':
-            if worldmap:
-               worldmap.update_actor(actor)
-            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
+            userevent('update_actor', actor=actor)
+            userevent('redraw')
          elif cmd == 'actor_moved':
-            if worldmap:
-               worldmap.update_actor(actor)
+            userevent('update_actor', actor=actor)
          elif cmd == 'actor_exits':
-            if worldmap:
-               worldmap.rm_actor(actor)
-            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
+            userevent('remove_actor', actor=actor)
+            userevent('redraw')
          elif cmd == 'actor_speaks':
             print server_msg['chat_content']
       # Non-actor-based events
@@ -125,10 +124,10 @@ def handle_network():
             print 'Server has quit...stopping client.'
             quit()
          elif cmd == 'set_map':
-            worldmap = world.Map(p1, send, server_msg['terrain'])
+            userevent('set_map', terrain=server_msg['terrain'])
          elif cmd == 'update_scoreboard':
             gfx.set_scoreboard(server_msg['scoreboard'])
-            pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='redraw'))
+            userevent('redraw')
 
 def handle_keypress(event):
 #   print pygame.key.name(event.key)
@@ -170,14 +169,14 @@ def quit():
 
 if __name__ == '__main__':
    # Player 1 (this client's main player)
-   p1 = thing.Actor(1,1, uid=name)
+   p1 = thing.Player(1,1, name)
    sub_socket.setsockopt(zmq.SUBSCRIBE, p1.uid)
 
    send('connect')
 
    # set up the window
    window = pygame.display.set_mode((1024,512))
-   pygame.display.set_caption('Treasure Hunter 0.3')
+   pygame.display.set_caption('Treasure Hunter 0.4')
    pygame.event.set_blocked(pygame.MOUSEBUTTONDOWN)
    pygame.event.set_blocked(pygame.MOUSEBUTTONUP)
    pygame.event.set_blocked(pygame.MOUSEMOTION)
@@ -187,8 +186,6 @@ if __name__ == '__main__':
    
    clock = pygame.time.Clock()
    delta = clock.tick(100)
-   while not worldmap:
-      handle_network()
    handle_graphics(window, redraw=True)
    while True:
       redraw = False
@@ -211,9 +208,19 @@ if __name__ == '__main__':
                   byebye.play()
             elif event.subtype == 'redraw':
                redraw = True
+            elif event.subtype == 'update_actor':
+               if worldmap:
+                  worldmap.update_actor(event.actor)
+            elif event.subtype == 'remove_actor':
+               if worldmap:
+                  worldmap.remove_actor(event.actor)
+               redraw = True
+            elif event.subtype == 'set_map':
+               worldmap = world.Map(p1, send, event.terrain)
          else:
             print "Unhandled event:", event
-      worldmap.update(delta)
+      if worldmap:
+         worldmap.update(delta)
       handle_graphics(window, redraw)
       handle_network()
       delta = clock.tick(100)

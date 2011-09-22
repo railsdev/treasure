@@ -54,10 +54,10 @@ terrain = [
 ]
 
 cast = thing.Cast()
-cast.add_actor(thing.Pig(terrain))
-cast.add_actor(thing.Pig(terrain))
-cast.add_actor(thing.Pig(terrain))
-cast.add_actor(thing.Pig(terrain))
+cast.update(thing.Pig(terrain))
+cast.update(thing.Pig(terrain))
+cast.update(thing.Pig(terrain))
+cast.update(thing.Pig(terrain))
 
 def quit():
    send({'cmd':'server_quit'})
@@ -80,56 +80,56 @@ while True:
    else:
       # Process the request, and broadcast result
       print 'Processing', msg
-      actor = msg['actor']
+      player = msg['player']
       if msg['cmd'] == 'connect':
          # Give the client the terrain for the map
-         print "Sending", actor.uid, "the terrain"
+         print "Sending", player.name, "the terrain"
          send({'cmd':'set_map',
-               'terrain':terrain}, recipient=actor.uid)
+               'terrain':terrain}, recipient=player.uid)
          # Let the new client know about everyone else:
-         scoreboard.modify_score(0, actor.uid)
+         scoreboard.modify_score(0, player.name)
          send({'cmd':'update_scoreboard',
                'scoreboard':scoreboard})
-         for curr_actor in cast:
+         for curr_actor in cast.actors_of_type(thing.Player):
             send(
                {'actor':curr_actor,
                 'cmd':'actor_moved'})
-         cast.add_actor(actor)
+         cast.update(player)
          send(
-            {'actor':actor,
+            {'actor':player,
              'cmd':'actor_enters'})
          
       elif msg['cmd'] == 'disconnect':
          send(
-            {'actor':actor,
+            {'actor':player,
              'cmd':'actor_exits'})
-         cast.rm_actor(actor)
-         scoreboard.rm_score(actor.uid)
+         cast.remove(player)
+         scoreboard.rm_score(player.name)
          send({'cmd':'update_scoreboard',
                'scoreboard':scoreboard})
       elif msg['cmd'] == 'chat':
          send(
-            {'actor':actor,
+            {'actor':player,
              'cmd':'actor_speaks',
              'chat_content':msg['chat_content']})
       elif msg['cmd'] == 'move_actor':
-         cast.update_actor(actor)
+         cast.update(player)
          # Did I catch a pig?
-         for pig in cast:
-            if (type(pig) == thing.Pig) and actor.collide(pig):
-               print actor.uid, "caught", pig.uid, "for", pig.value, "points"
-               scoreboard.modify_score(pig.value, actor.uid)
+         for pig in cast.actors_of_type(thing.Pig):
+            if player.collide(pig):
+               print player.name, "caught", pig
+               scoreboard.modify_score(pig.value, player.name)
                send({'cmd':'update_scoreboard',
                      'scoreboard':scoreboard})
-               cast.rm_actor(pig)
+               cast.remove(pig)
                send({'actor':pig,
                      'cmd':'actor_exits'})
                newpig = thing.Pig(terrain)
-               cast.add_actor(newpig)
+               cast.update(newpig)
                send({'actor':newpig,
                      'cmd':'actor_enters'})
          send(
-            {'actor':actor,
+            {'actor':player,
              'cmd':'actor_moved'})
    if heartbeat % MAX_FPS == 0:
       send({'heartbeat':heartbeat})
