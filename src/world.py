@@ -16,19 +16,19 @@ class Map(object):
       bound_col = len(self.terrain[0]) - 1
       newrow = self.p1.row
       newcol = self.p1.col
-      if direction == pygame.K_UP:
+      if direction == 'up':
          newrow -= 1
          if newrow < 0:
             newrow = 0
-      elif direction == pygame.K_DOWN:
+      elif direction == 'down':
          newrow += 1
          if newrow > bound_row:
             newrow = bound_row
-      elif direction == pygame.K_RIGHT:
+      elif direction == 'right':
          newcol += 1
          if newcol > bound_col:
             newcol = bound_col
-      elif direction == pygame.K_LEFT:
+      elif direction == 'left':
          newcol -= 1
          if newcol < 0:
             newcol = 0
@@ -56,14 +56,14 @@ class Map(object):
 
    def remove_actor(self, actor):
       if type(actor) == Pig:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='oink'))
+         user_events.post('sound', sound='oink')
       elif type(actor) == Player:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='byebye'))
+         user_events.post('sound', sound='byebye')
       self.cast.remove(actor)
       self.dirty = True
    
    def update_actor(self, actor):
       if (type(actor) == Player) and not self.cast.has_actor(actor):
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='iamhere'))
+         user_events.post('sound', sound='iamhere')
       self.cast.update(actor)
       self.dirty = True

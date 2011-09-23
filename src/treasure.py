@@ -1,5 +1,32 @@
-import cPickle, cStringIO, pygame, random
+import cPickle, cStringIO, random
 random.seed()
+
+#------------------------------------------------------------------------------
+# User Event Classes (use the global user_events object instantiated below)
+
+class Event(object):
+   def __init__(self, type, **kwargs):
+      self.type = type
+      for key in kwargs:
+         setattr(self, key, kwargs[key])
+
+class UserEvents(object):
+   def __init__(self):
+      self.events = []
+
+   def post(self, type, **kwargs):
+      self.events.insert(0, Event(type, **kwargs))
+
+   def get(self):
+      if self.events:
+         return self.events.pop()
+      else:
+         return None
+
+   def peek(self):
+      return len(self.events)
+
+user_events = UserEvents()
 
 #-------------------------------------------------------------------------------
 # Network helper functions
@@ -83,17 +110,15 @@ class Player(Actor):
       return "<Player %s/%s (%d,%d)>" % (self.name, self.uid, self.row, self.col)
 
 
-   def control(self, event):
-      # Movement
-      if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
-         if event.type == pygame.KEYDOWN:
-            self.direction_stack.insert(0, event.key)
-         elif event.type == pygame.KEYUP:
-            try:
-               self.direction_stack.remove(event.key)
-            except ValueError:
-               pass
-      # If we think we're stopped, but there's 
+   def keydown(self, direction):
+      self.direction_stack.insert(0, direction)
+
+
+   def keyup(self, direction):      
+      try:
+         self.direction_stack.remove(direction)
+      except ValueError:
+         pass
 
 
    def update(self, delta):
@@ -104,7 +129,7 @@ class Player(Actor):
             self.timer = 0
       # Can we move now?
       if (self.timer == 0) and self.direction_stack:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='move', direction=self.direction_stack[0]))
+         user_events.post('move', direction=self.direction_stack[0])
          self.timer = self.MOVE_DELAY
 
 
@@ -124,7 +149,7 @@ class Player(Actor):
 
 
 class Pig(Actor):
-   PIG_MOVE_DELAY = 500
+   PIG_MOVE_DELAY = 0.500
    def __init__(self, terrain):
       # Pick random starting location...that's not in a wall.
       row = random.choice(range(len(terrain)))

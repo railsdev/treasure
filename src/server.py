@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
-import pygame, sys, zmq
+import time, random, sys, zmq
 from treasure import *
+import level1, level2
+
+random.seed()
 
 context = zmq.Context()
 
@@ -16,42 +19,9 @@ pub_socket.bind("tcp://*:5556")
 def send(pyobj, recipient='all'):
    pub_socket.send(recipient + ':' + pickle(pyobj))
 
-pygame.init()
+levels = [level1, level2]
 
-terrain = [
-"                   XXX   X      ",
-"                 X XXX X X XXXX ",
-" X   X           X   X X X X    ",
-"   X    X        XXX X X X X XXX",
-"       X         X   X X X X    ",
-"X X  X           X XXX X X XXXX ",
-"          X      X     X   X    ",
-"   X       X     XXXXXXXX XX XXX",
-"         XXXX           X X     ",
-"           X            X X     ",
-"XXXX X    X                     ",
-"      XX    XXX  XXX  X X  XXX  ",
-"XXXX X        X  X X  X X  X    ",
-"            XXX  X X  XXX  XXX  ",
-"                                ",
-"                                ",
-"     XXXXXXXXXXXX XXXXX         ",
-"     X          X     X         ",
-"     X    X     X     X         ",
-"     X    X           X         ",
-"     X XXXX XXXXXXXXXXX    XXXXX",
-"                                ",
-"   XXXX                  XXXXX  ",
-"XXXX                     X      ",
-"     X XXXX        X X   X      ",
-" XXXXX    X       XX XX  XX   XX",
-"     XXXX X      XXX XXX  X     ",
-"XXXX XX   X     XXXX XXXX X     ",
-"   X XX XXXXXXX    X X    X     ",
-" X      X                XXXXX  ",
-"  XXXXXXXXXX XXXXXXXX    X      ",
-"X                        X      ",
-]
+terrain = random.choice(levels).terrain
 
 cast = Cast()
 cast.update(Pig(terrain))
@@ -62,15 +32,14 @@ cast.update(Pig(terrain))
 def quit():
    send({'cmd':'server_quit'})
    print "Server exiting."
-   pygame.quit()
    sys.exit()
 
 # Main Loop
 MAX_FPS = 200
 heartbeat = 0
 scoreboard = ScoreBoard()
-clock = pygame.time.Clock()
-delta = clock.tick(MAX_FPS)
+curr_time = last_time = time.time()
+delta = 0.0
 print "Server is running."
 while True:
    try:
@@ -136,12 +105,9 @@ while True:
    for pig in cast.update_pigs(delta):
       send({'actor':pig,
             'cmd':'actor_moved'})
-   for event in pygame.event.get():
-      if event.type == pygame.QUIT:
-         quit()
-      if event.type == pygame.KEYDOWN:
-         if event.key == pygame.K_ESCAPE:
-            quit()
    heartbeat += 1
-   delta = clock.tick(MAX_FPS)
+   time.sleep(.005)
+   last_time = curr_time
+   curr_time = time.time()
+   delta = curr_time - last_time
    
