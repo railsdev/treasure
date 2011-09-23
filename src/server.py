@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import pygame, sys, zmq
-import thing, util
+from treasure import *
 
 context = zmq.Context()
 
@@ -14,7 +14,7 @@ pub_socket = context.socket(zmq.PUB)
 pub_socket.bind("tcp://*:5556")
 
 def send(pyobj, recipient='all'):
-   pub_socket.send(recipient + ':' + util.pickle(pyobj))
+   pub_socket.send(recipient + ':' + pickle(pyobj))
 
 pygame.init()
 
@@ -53,11 +53,11 @@ terrain = [
 "X                        X      ",
 ]
 
-cast = thing.Cast()
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
+cast = Cast()
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
 
 def quit():
    send({'cmd':'server_quit'})
@@ -68,7 +68,7 @@ def quit():
 # Main Loop
 MAX_FPS = 200
 heartbeat = 0
-scoreboard = thing.ScoreBoard()
+scoreboard = ScoreBoard()
 clock = pygame.time.Clock()
 delta = clock.tick(MAX_FPS)
 print "Server is running."
@@ -90,7 +90,7 @@ while True:
          scoreboard.modify_score(0, player.name)
          send({'cmd':'update_scoreboard',
                'scoreboard':scoreboard})
-         for curr_actor in cast.actors_of_type(thing.Player):
+         for curr_actor in cast.actors_of_type(Player):
             send(
                {'actor':curr_actor,
                 'cmd':'actor_moved'})
@@ -115,7 +115,7 @@ while True:
       elif msg['cmd'] == 'move_actor':
          cast.update(player)
          # Did I catch a pig?
-         for pig in cast.actors_of_type(thing.Pig):
+         for pig in cast.actors_of_type(Pig):
             if player.collide(pig):
                print player.name, "caught", pig
                scoreboard.modify_score(pig.value, player.name)
@@ -124,7 +124,7 @@ while True:
                cast.remove(pig)
                send({'actor':pig,
                      'cmd':'actor_exits'})
-               newpig = thing.Pig(terrain)
+               newpig = Pig(terrain)
                cast.update(newpig)
                send({'actor':newpig,
                      'cmd':'actor_enters'})

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pygame, thing
+import pygame
+from treasure import *
 
 # COLORS
 BLACK = (0, 0, 0)
@@ -68,7 +69,7 @@ def render_world(window, world, redraw=False):
                         window, GREEN, 
                         (colnum * tile_size, rownum * tile_size, tile_size, tile_size))
     # Erase all the actor's old stuff
-    for actor in (world.cast.actors_of_type(thing.Player) + world.cast.actors_of_type(thing.Pig)):
+    for actor in (world.cast.actors_of_type(Player) + world.cast.actors_of_type(Pig)):
         if (actor.old_row == None) or (actor.old_col == None):
             row, col = actor.row, actor.col
         else:
@@ -77,7 +78,7 @@ def render_world(window, world, redraw=False):
         pygame.draw.rect(window, BLACK, tile_rect)        
 
     # Draw the pigs
-    for pig in world.cast.actors_of_type(thing.Pig):
+    for pig in world.cast.actors_of_type(Pig):
         pig_rect = pygame.Rect(pig.col * tile_size, pig.row * tile_size, tile_size, tile_size)
         pygame.draw.rect(window, PINK, pig_rect)
         number = pig.value
@@ -89,7 +90,7 @@ def render_world(window, world, redraw=False):
         window.blit(pig_numbers[number], number_rect)
         
     # Draw the players
-    for player in world.cast.actors_of_type(thing.Player):
+    for player in world.cast.actors_of_type(Player):
         player_rect = pygame.Rect(player.col * tile_size, player.row * tile_size, tile_size, tile_size)
         pygame.draw.rect(window, LIGHTBLUE, player_rect)
         letter = player.name[0]

@@ -20,7 +20,8 @@ if __name__ == '__main__':
 import pygame, zmq
 pygame.mixer.pre_init(44100, -16, 1, 2048)
 pygame.init()
-import gfx, util, thing, world
+from treasure import *
+import gfx, world
 
 #-------------------------------------------------------------------------------
 # GLOBALS
@@ -85,7 +86,7 @@ def recv():
    else:
       sep = msg.find(':')
       to = msg[0:sep]
-      obj = util.unpickle(msg[sep+1:])
+      obj = unpickle(msg[sep+1:])
       return obj
 
 #-------------------------------------------------------------------------------
@@ -169,7 +170,7 @@ def quit():
 
 if __name__ == '__main__':
    # Player 1 (this client's main player)
-   p1 = thing.Player(1,1, name)
+   p1 = Player(1,1, name)
    sub_socket.setsockopt(zmq.SUBSCRIBE, p1.uid)
 
    send('connect')

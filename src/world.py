@@ -1,10 +1,11 @@
-import pygame, sys, thing
+import pygame, sys
+from treasure import *
 
 class Map(object):
    def __init__(self, p1, send, terrain):
       self.send    = send
       self.terrain = terrain
-      self.cast    = thing.Cast()
+      self.cast    = Cast()
       self.p1      = p1
       self.cast.update(p1)
       self.dirty   = True  # Set to false whenever the graphics modules draws the map
@@ -37,7 +38,7 @@ class Map(object):
       if self.terrain[newrow][newcol] == 'X':
          okay_to_move = False
       # You can't walk over other players!
-      for player in self.cast.actors_of_type(thing.Player):
+      for player in self.cast.actors_of_type(Player):
          if (player.uid != self.p1.uid) and player.collide((newrow,newcol)):
             okay_to_move = False
       # Actually move, if we can.
@@ -54,15 +55,15 @@ class Map(object):
       
 
    def remove_actor(self, actor):
-      if type(actor) == thing.Pig:
+      if type(actor) == Pig:
          pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='oink'))
-      elif type(actor) == thing.Player:
+      elif type(actor) == Player:
          pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='byebye'))
       self.cast.remove(actor)
       self.dirty = True
    
    def update_actor(self, actor):
-      if (type(actor) == thing.Player) and not self.cast.has_actor(actor):
+      if (type(actor) == Player) and not self.cast.has_actor(actor):
          pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='iamhere'))
       self.cast.update(actor)
       self.dirty = True
