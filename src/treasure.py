@@ -152,21 +152,26 @@ class Pig(Actor):
    PIG_MOVE_DELAY = 0.500
    def __init__(self, terrain):
       # Pick random starting location...that's not in a wall.
-      row = random.choice(range(len(terrain)))
-      col = random.choice(range(len(terrain[0])))
-      while terrain[row][col] != ' ':
-         row = random.choice(range(len(terrain)))
-         col = random.choice(range(len(terrain[0])))
+      self.set_new_terrain(terrain)
       # Now that we have row and col, initialize superclass stuff
-      super(Pig, self).__init__(row, col)
+      super(Pig, self).__init__(self.row, self.col)
       # Pig-specific stuff...
-      self.terrain = terrain
       self.move_timer = self.PIG_MOVE_DELAY
       self.value = random.choice(range(1,4))
 
 
    def __repr__(self):
       return "<Pig %s (%d,%d) %d pts>" % (self.uid, self.row, self.col, self.value)
+
+
+   def set_new_terrain(self, terrain):
+      row = random.choice(range(len(terrain)))
+      col = random.choice(range(len(terrain[0])))
+      while terrain[row][col] != ' ':
+         row = random.choice(range(len(terrain)))
+         col = random.choice(range(len(terrain[0])))
+      self.terrain = terrain
+      self.row, self.col = row, col
 
 
    def update(self, delta, cast):
@@ -225,7 +230,7 @@ class Cast(object):
 
    def actors_of_type(self, actor_type):
       if self.members.has_key(actor_type):
-         return self.members[actor_type]
+         return list(self.members[actor_type])
       else:
          return []
 
@@ -280,6 +285,8 @@ class Cast(object):
 class ScoreBoard(object):
    def __init__(self):
       self.scores = {}
+      self.last_high_score = None
+      self.last_winner = None
 
 
    # Iterator functions
@@ -308,3 +315,19 @@ class ScoreBoard(object):
          del(self.scores[name])
          
 
+   def high_score(self):
+      if self.scores:
+         max = 0
+         name = ''
+         for curr_name in self.scores:
+            if self.scores[curr_name] > max:
+               max = self.scores[curr_name]
+               name = curr_name
+         return (max, name)
+      else:
+         return (0, '')
+
+   def reset_scores(self):
+      self.last_high_score, self.last_winner = self.high_score()
+      for curr_name in self.scores:
+         self.scores[curr_name] = 0

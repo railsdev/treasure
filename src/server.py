@@ -2,7 +2,7 @@
 
 import time, random, sys, zmq
 from treasure import *
-import level1, level2
+import level1, level2, level3
 
 random.seed()
 
@@ -19,7 +19,7 @@ pub_socket.bind("tcp://*:5556")
 def send(pyobj, recipient='all'):
    pub_socket.send(recipient + ':' + pickle(pyobj))
 
-levels = [level1, level2]
+levels = [level1, level2, level3]
 
 terrain = random.choice(levels).terrain
 
@@ -42,6 +42,10 @@ curr_time = last_time = time.time()
 delta = 0.0
 print "Server is running."
 while True:
+   # Loop time calculations
+   last_time = curr_time
+   curr_time = time.time()
+   delta = curr_time - last_time
    try:
       msg = pull_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
    except zmq.core.error.ZMQError:
@@ -100,14 +104,35 @@ while True:
          send(
             {'actor':player,
              'cmd':'actor_moved'})
-   if heartbeat % MAX_FPS == 0:
-      send({'heartbeat':heartbeat})
+   # Check for win conditions
+   high_score, name = scoreboard.high_score()
+   if high_score >= 25:
+      # round won announcement
+      send({'cmd':'server_chat',
+            'chat_content':'%s won the round with %d points!' % (name, high_score)})
+      # reset scoreboard
+      scoreboard.reset_scores()
+      send({'cmd':'update_scoreboard',
+           'scoreboard':scoreboard})
+      # set new terrain
+      terrain = random.choice(levels).terrain
+      # reset the pigs
+      for pig in cast.actors_of_type(Pig):
+         pig.set_new_terrain(terrain)
+         send({'actor':pig,
+               'cmd':'actor_moved'})
+      # send clients the new terrain
+      send({'cmd':'set_map',
+            'terrain':terrain})
+      
+   # Update pigs locations
    for pig in cast.update_pigs(delta):
       send({'actor':pig,
             'cmd':'actor_moved'})
+   # Heartbeat
+   if heartbeat % MAX_FPS == 0:
+      send({'heartbeat':heartbeat})
    heartbeat += 1
+   # Loop delay
    time.sleep(.005)
-   last_time = curr_time
-   curr_time = time.time()
-   delta = curr_time - last_time
    

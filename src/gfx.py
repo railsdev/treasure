@@ -23,14 +23,18 @@ letterFont = pygame.font.SysFont('arial', 12)
 
 scoreboard_header = basicFont.render("SCORES", True, GREEN, BLACK)
 score_lines = []
+high_score = None
 player_letters = {}
 pig_numbers = {}
 
 def set_scoreboard(scoreboard):
     global score_lines
+    global high_score
     score_lines = []
     for uid, score in scoreboard:
         score_lines.append(basicFont.render("%4d: %s" % (score, uid), True, GREEN, BLACK))
+    if scoreboard.last_winner:
+        high_score = basicFont.render("Last round's winner: %s with %d points." % (scoreboard.last_winner, scoreboard.last_high_score), True, GREEN, BLACK)
 
 def render_text(window):
     line1Rect = line1.get_rect()
@@ -53,6 +57,13 @@ def render_text(window):
         lineRect.left = window.get_rect().centerx + marginwidth
         lineRect.top = window.get_rect().top + line_num * (fontsize + linespacing)
         window.blit(line, lineRect)
+        line_num += 1
+    if high_score:
+        line_num += 1
+        high_score_rect = high_score.get_rect()
+        high_score_rect.left = window.get_rect().centerx + marginwidth
+        high_score_rect.top = window.get_rect().top + line_num * (fontsize + linespacing)
+        window.blit(high_score, high_score_rect)
         line_num += 1
         
 

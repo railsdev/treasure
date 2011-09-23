@@ -233,6 +233,7 @@ if __name__ == '__main__':
             redraw = True
          elif event.type == 'set_map':
             worldmap = world.Map(p1, send, event.terrain)
+            redraw = True
             
       if worldmap:
          worldmap.update(delta)
