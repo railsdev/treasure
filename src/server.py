@@ -2,7 +2,7 @@
 
 import time, random, sys, zmq
 from treasure import *
-import level1, level2, level3
+from level import level1, level2, level3
 
 random.seed()
 

@@ -33,10 +33,10 @@ global worldmap
 worldmap = None
 
 # Sounds
-oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'oink.ogg'))
-iamhere = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'iamhere.ogg'))
-byebye = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'byebye.ogg'))
-pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'treasure_music.ogg'))
+oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'oink.ogg'))
+iamhere = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'iamhere.ogg'))
+byebye = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'byebye.ogg'))
+pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'sound', 'treasure_music.ogg'))
 
 #-------------------------------------------------------------------------------
 # ZMQ INITIALIZATION
