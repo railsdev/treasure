@@ -20,3 +20,5 @@ Then start any number of clients, where a.b.c.d is the IP address of the server:
     ./treasure PlayerName --server a.b.c.d   # You can omit the server argument if the server is on localhost
 
 Catch the pigs....hey, it's just a prototype.
+
+Suggestions?
