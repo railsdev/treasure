@@ -1,11 +1,64 @@
-import copy, pygame, random
+import cPickle, cStringIO, random
 random.seed()
+
+#------------------------------------------------------------------------------
+# User Event Classes (use the global user_events object instantiated below)
+
+class Event(object):
+   def __init__(self, type, **kwargs):
+      self.type = type
+      for key in kwargs:
+         setattr(self, key, kwargs[key])
+
+class UserEvents(object):
+   def __init__(self):
+      self.events = []
+
+   def post(self, type, **kwargs):
+      self.events.insert(0, Event(type, **kwargs))
+
+   def get(self):
+      if self.events:
+         return self.events.pop()
+      else:
+         return None
+
+   def peek(self):
+      return len(self.events)
+
+user_events = UserEvents()
+
+#-------------------------------------------------------------------------------
+# Network helper functions
+
+def pickle(some_obj):
+   """
+   Take an arbitrary object and return a string with the pickled representation 
+   of it.
+   """
+   pickled_str_io = cStringIO.StringIO()
+   cPickle.dump(some_obj, pickled_str_io)
+   pickled_str = pickled_str_io.getvalue()
+   return pickled_str
+
+
+def unpickle(pickled_str):
+   """
+   Take a string with the pickled representation of an object, unpickle it and
+   return the object.
+   """
+   pickled_str_io = cStringIO.StringIO(pickled_str)
+   return cPickle.load(pickled_str_io)
+
+#-------------------------------------------------------------------------------
+# Game Objects
 
 class Actor(object):
    def __init__(self, row, col):
       self.set_location(row, col, init=True)
       self.uid = str(id(self))
       
+
    def collide(self, other):
       if other == self:
          return False
@@ -17,6 +70,7 @@ class Actor(object):
          other_col = other.col
       return (other_row == self.row) and (other_col == self.col)
 
+
    def set_location(self, row, col, init=False):
       if init:
          self.clear_old_location()
@@ -26,12 +80,16 @@ class Actor(object):
       self.row = row
       self.col = col
 
+
    def clear_old_location(self):
       self.old_row = None
       self.old_col = None
       
+
    def __repr__(self):
       return "<Actor %s (%d,%d)>" % (self.uid, self.row, self.col)
+
+
    
 class Player(Actor):
    MOVE_DELAY = 150
@@ -47,17 +105,21 @@ class Player(Actor):
       self.direction_stack = []
       self.timer = 0
 
-   def control(self, event):
-      # Movement
-      if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
-         if event.type == pygame.KEYDOWN:
-            self.direction_stack.insert(0, event.key)
-         elif event.type == pygame.KEYUP:
-            try:
-               self.direction_stack.remove(event.key)
-            except ValueError:
-               pass
-      # If we think we're stopped, but there's 
+
+   def __repr__(self):
+      return "<Player %s/%s (%d,%d)>" % (self.name, self.uid, self.row, self.col)
+
+
+   def keydown(self, direction):
+      self.direction_stack.insert(0, direction)
+
+
+   def keyup(self, direction):      
+      try:
+         self.direction_stack.remove(direction)
+      except ValueError:
+         pass
+
 
    def update(self, delta):
       # Update the move timer
@@ -67,14 +129,12 @@ class Player(Actor):
             self.timer = 0
       # Can we move now?
       if (self.timer == 0) and self.direction_stack:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='move', direction=self.direction_stack[0]))
+         user_events.post('move', direction=self.direction_stack[0])
          self.timer = self.MOVE_DELAY
+
 
    def reset_move_timer(self):
       self.timer = 0
-
-   def __repr__(self):
-      return "<Player %s/%s (%d,%d)>" % (self.name, self.uid, self.row, self.col)
    
    
    def clone(self, other):
@@ -86,24 +146,33 @@ class Player(Actor):
       self.direction_stack = other.direction_stack
       self.timer           = other.timer
 
+
+
 class Pig(Actor):
-   PIG_MOVE_DELAY = 500
+   PIG_MOVE_DELAY = 0.500
    def __init__(self, terrain):
       # Pick random starting location...that's not in a wall.
+      self.set_new_terrain(terrain)
+      # Now that we have row and col, initialize superclass stuff
+      super(Pig, self).__init__(self.row, self.col)
+      # Pig-specific stuff...
+      self.move_timer = self.PIG_MOVE_DELAY
+      self.value = random.choice(range(1,4))
+
+
+   def __repr__(self):
+      return "<Pig %s (%d,%d) %d pts>" % (self.uid, self.row, self.col, self.value)
+
+
+   def set_new_terrain(self, terrain):
       row = random.choice(range(len(terrain)))
       col = random.choice(range(len(terrain[0])))
       while terrain[row][col] != ' ':
          row = random.choice(range(len(terrain)))
          col = random.choice(range(len(terrain[0])))
-      # Now that we have row and col, initialize superclass stuff
-      super(Pig, self).__init__(row, col)
-      # Pig-specific stuff...
       self.terrain = terrain
-      self.move_timer = self.PIG_MOVE_DELAY
-      self.value = random.choice(range(1,4))
+      self.row, self.col = row, col
 
-   def __repr__(self):
-      return "<Pig %s (%d,%d) %d pts>" % (self.uid, self.row, self.col, self.value)
 
    def update(self, delta, cast):
       self.move_timer -= delta
@@ -111,6 +180,7 @@ class Pig(Actor):
          self.move_timer = self.PIG_MOVE_DELAY
          self.move(cast)
          return True
+
 
    def move(self, cast):
       direction = random.choice(['up', 'down', 'left', 'right'])
@@ -139,6 +209,7 @@ class Pig(Actor):
          return True
       return False
 
+
    def clone(self, other):
       self.row        = other.row
       self.col        = other.col
@@ -159,9 +230,10 @@ class Cast(object):
 
    def actors_of_type(self, actor_type):
       if self.members.has_key(actor_type):
-         return self.members[actor_type]
+         return list(self.members[actor_type])
       else:
          return []
+
 
    def remove(self, actor):
       reference = self.find_actor(actor)
@@ -213,17 +285,10 @@ class Cast(object):
 class ScoreBoard(object):
    def __init__(self):
       self.scores = {}
+      self.last_high_score = None
+      self.last_winner = None
 
-   def modify_score(self, amount, name):
-      if self.scores.has_key(name):
-         self.scores[name] += amount
-      else:
-         self.scores[name] = amount
 
-   def rm_score(self, name):
-      if self.scores.has_key(name):
-         del(self.scores[name])
-         
    # Iterator functions
    def __iter__(self):
       self.sorted_list = [x for x in sorted(self.scores.iteritems(), key=lambda (k,v): (v,k))]
@@ -236,3 +301,33 @@ class ScoreBoard(object):
          return self.sorted_list.pop()
       else:
          raise StopIteration
+   # End iterator functions
+      
+   def modify_score(self, amount, name):
+      if self.scores.has_key(name):
+         self.scores[name] += amount
+      else:
+         self.scores[name] = amount
+
+
+   def rm_score(self, name):
+      if self.scores.has_key(name):
+         del(self.scores[name])
+         
+
+   def high_score(self):
+      if self.scores:
+         max = 0
+         name = ''
+         for curr_name in self.scores:
+            if self.scores[curr_name] > max:
+               max = self.scores[curr_name]
+               name = curr_name
+         return (max, name)
+      else:
+         return (0, '')
+
+   def reset_scores(self):
+      self.last_high_score, self.last_winner = self.high_score()
+      for curr_name in self.scores:
+         self.scores[curr_name] = 0

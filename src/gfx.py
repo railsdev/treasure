@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pygame, thing
+import pygame
+from treasure import *
 
 # COLORS
 BLACK = (0, 0, 0)
@@ -22,14 +23,18 @@ letterFont = pygame.font.SysFont('arial', 12)
 
 scoreboard_header = basicFont.render("SCORES", True, GREEN, BLACK)
 score_lines = []
+high_score = None
 player_letters = {}
 pig_numbers = {}
 
 def set_scoreboard(scoreboard):
     global score_lines
+    global high_score
     score_lines = []
     for uid, score in scoreboard:
         score_lines.append(basicFont.render("%4d: %s" % (score, uid), True, GREEN, BLACK))
+    if scoreboard.last_winner:
+        high_score = basicFont.render("Last round's winner: %s with %d points." % (scoreboard.last_winner, scoreboard.last_high_score), True, GREEN, BLACK)
 
 def render_text(window):
     line1Rect = line1.get_rect()
@@ -53,6 +58,13 @@ def render_text(window):
         lineRect.top = window.get_rect().top + line_num * (fontsize + linespacing)
         window.blit(line, lineRect)
         line_num += 1
+    if high_score:
+        line_num += 1
+        high_score_rect = high_score.get_rect()
+        high_score_rect.left = window.get_rect().centerx + marginwidth
+        high_score_rect.top = window.get_rect().top + line_num * (fontsize + linespacing)
+        window.blit(high_score, high_score_rect)
+        line_num += 1
         
 
 
@@ -68,7 +80,7 @@ def render_world(window, world, redraw=False):
                         window, GREEN, 
                         (colnum * tile_size, rownum * tile_size, tile_size, tile_size))
     # Erase all the actor's old stuff
-    for actor in (world.cast.actors_of_type(thing.Player) + world.cast.actors_of_type(thing.Pig)):
+    for actor in (world.cast.actors_of_type(Player) + world.cast.actors_of_type(Pig)):
         if (actor.old_row == None) or (actor.old_col == None):
             row, col = actor.row, actor.col
         else:
@@ -77,7 +89,7 @@ def render_world(window, world, redraw=False):
         pygame.draw.rect(window, BLACK, tile_rect)        
 
     # Draw the pigs
-    for pig in world.cast.actors_of_type(thing.Pig):
+    for pig in world.cast.actors_of_type(Pig):
         pig_rect = pygame.Rect(pig.col * tile_size, pig.row * tile_size, tile_size, tile_size)
         pygame.draw.rect(window, PINK, pig_rect)
         number = pig.value
@@ -89,7 +101,7 @@ def render_world(window, world, redraw=False):
         window.blit(pig_numbers[number], number_rect)
         
     # Draw the players
-    for player in world.cast.actors_of_type(thing.Player):
+    for player in world.cast.actors_of_type(Player):
         player_rect = pygame.Rect(player.col * tile_size, player.row * tile_size, tile_size, tile_size)
         pygame.draw.rect(window, LIGHTBLUE, player_rect)
         letter = player.name[0]

@@ -1,10 +1,11 @@
-import pygame, sys, thing
+import pygame, sys
+from treasure import *
 
 class Map(object):
    def __init__(self, p1, send, terrain):
       self.send    = send
       self.terrain = terrain
-      self.cast    = thing.Cast()
+      self.cast    = Cast()
       self.p1      = p1
       self.cast.update(p1)
       self.dirty   = True  # Set to false whenever the graphics modules draws the map
@@ -15,19 +16,19 @@ class Map(object):
       bound_col = len(self.terrain[0]) - 1
       newrow = self.p1.row
       newcol = self.p1.col
-      if direction == pygame.K_UP:
+      if direction == 'up':
          newrow -= 1
          if newrow < 0:
             newrow = 0
-      elif direction == pygame.K_DOWN:
+      elif direction == 'down':
          newrow += 1
          if newrow > bound_row:
             newrow = bound_row
-      elif direction == pygame.K_RIGHT:
+      elif direction == 'right':
          newcol += 1
          if newcol > bound_col:
             newcol = bound_col
-      elif direction == pygame.K_LEFT:
+      elif direction == 'left':
          newcol -= 1
          if newcol < 0:
             newcol = 0
@@ -37,7 +38,7 @@ class Map(object):
       if self.terrain[newrow][newcol] == 'X':
          okay_to_move = False
       # You can't walk over other players!
-      for player in self.cast.actors_of_type(thing.Player):
+      for player in self.cast.actors_of_type(Player):
          if (player.uid != self.p1.uid) and player.collide((newrow,newcol)):
             okay_to_move = False
       # Actually move, if we can.
@@ -54,15 +55,15 @@ class Map(object):
       
 
    def remove_actor(self, actor):
-      if type(actor) == thing.Pig:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='oink'))
-      elif type(actor) == thing.Player:
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='byebye'))
+      if type(actor) == Pig:
+         user_events.post('sound', sound='oink')
+      elif type(actor) == Player:
+         user_events.post('sound', sound='byebye')
       self.cast.remove(actor)
       self.dirty = True
    
    def update_actor(self, actor):
-      if (type(actor) == thing.Player) and not self.cast.has_actor(actor):
-         pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype='sound', sound='iamhere'))
+      if (type(actor) == Player) and not self.cast.has_actor(actor):
+         user_events.post('sound', sound='iamhere')
       self.cast.update(actor)
       self.dirty = True

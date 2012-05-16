@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
-import pygame, sys, zmq
-import thing, util
+import time, random, sys, zmq
+from treasure import *
+from level import level1, level2, level3
+
+random.seed()
 
 context = zmq.Context()
 
@@ -14,65 +17,35 @@ pub_socket = context.socket(zmq.PUB)
 pub_socket.bind("tcp://*:5556")
 
 def send(pyobj, recipient='all'):
-   pub_socket.send(recipient + ':' + util.pickle(pyobj))
+   pub_socket.send(recipient + ':' + pickle(pyobj))
 
-pygame.init()
+levels = [level1, level2, level3]
 
-terrain = [
-"                   XXX   X      ",
-"                 X XXX X X XXXX ",
-" X   X           X   X X X X    ",
-"   X    X        XXX X X X X XXX",
-"       X         X   X X X X    ",
-"X X  X           X XXX X X XXXX ",
-"          X      X     X   X    ",
-"   X       X     XXXXXXXX XX XXX",
-"         XXXX           X X     ",
-"           X            X X     ",
-"XXXX X    X                     ",
-"      XX    XXX  XXX  X X  XXX  ",
-"XXXX X        X  X X  X X  X    ",
-"            XXX  X X  XXX  XXX  ",
-"                                ",
-"                                ",
-"     XXXXXXXXXXXX XXXXX         ",
-"     X          X     X         ",
-"     X    X     X     X         ",
-"     X    X           X         ",
-"     X XXXX XXXXXXXXXXX    XXXXX",
-"                                ",
-"   XXXX                  XXXXX  ",
-"XXXX                     X      ",
-"     X XXXX        X X   X      ",
-" XXXXX    X       XX XX  XX   XX",
-"     XXXX X      XXX XXX  X     ",
-"XXXX XX   X     XXXX XXXX X     ",
-"   X XX XXXXXXX    X X    X     ",
-" X      X                XXXXX  ",
-"  XXXXXXXXXX XXXXXXXX    X      ",
-"X                        X      ",
-]
+terrain = random.choice(levels).terrain
 
-cast = thing.Cast()
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
-cast.update(thing.Pig(terrain))
+cast = Cast()
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
+cast.update(Pig(terrain))
 
 def quit():
    send({'cmd':'server_quit'})
    print "Server exiting."
-   pygame.quit()
    sys.exit()
 
 # Main Loop
 MAX_FPS = 200
 heartbeat = 0
-scoreboard = thing.ScoreBoard()
-clock = pygame.time.Clock()
-delta = clock.tick(MAX_FPS)
+scoreboard = ScoreBoard()
+curr_time = last_time = time.time()
+delta = 0.0
 print "Server is running."
 while True:
+   # Loop time calculations
+   last_time = curr_time
+   curr_time = time.time()
+   delta = curr_time - last_time
    try:
       msg = pull_socket.recv_pyobj(flags=zmq.core.NOBLOCK)
    except zmq.core.error.ZMQError:
@@ -90,7 +63,7 @@ while True:
          scoreboard.modify_score(0, player.name)
          send({'cmd':'update_scoreboard',
                'scoreboard':scoreboard})
-         for curr_actor in cast.actors_of_type(thing.Player):
+         for curr_actor in cast.actors_of_type(Player):
             send(
                {'actor':curr_actor,
                 'cmd':'actor_moved'})
@@ -115,7 +88,7 @@ while True:
       elif msg['cmd'] == 'move_actor':
          cast.update(player)
          # Did I catch a pig?
-         for pig in cast.actors_of_type(thing.Pig):
+         for pig in cast.actors_of_type(Pig):
             if player.collide(pig):
                print player.name, "caught", pig
                scoreboard.modify_score(pig.value, player.name)
@@ -124,24 +97,42 @@ while True:
                cast.remove(pig)
                send({'actor':pig,
                      'cmd':'actor_exits'})
-               newpig = thing.Pig(terrain)
+               newpig = Pig(terrain)
                cast.update(newpig)
                send({'actor':newpig,
                      'cmd':'actor_enters'})
          send(
             {'actor':player,
              'cmd':'actor_moved'})
-   if heartbeat % MAX_FPS == 0:
-      send({'heartbeat':heartbeat})
+   # Check for win conditions
+   high_score, name = scoreboard.high_score()
+   if high_score >= 25:
+      # round won announcement
+      send({'cmd':'server_chat',
+            'chat_content':'%s won the round with %d points!' % (name, high_score)})
+      # reset scoreboard
+      scoreboard.reset_scores()
+      send({'cmd':'update_scoreboard',
+           'scoreboard':scoreboard})
+      # set new terrain
+      terrain = random.choice(levels).terrain
+      # reset the pigs
+      for pig in cast.actors_of_type(Pig):
+         pig.set_new_terrain(terrain)
+         send({'actor':pig,
+               'cmd':'actor_moved'})
+      # send clients the new terrain
+      send({'cmd':'set_map',
+            'terrain':terrain})
+      
+   # Update pigs locations
    for pig in cast.update_pigs(delta):
       send({'actor':pig,
             'cmd':'actor_moved'})
-   for event in pygame.event.get():
-      if event.type == pygame.QUIT:
-         quit()
-      if event.type == pygame.KEYDOWN:
-         if event.key == pygame.K_ESCAPE:
-            quit()
+   # Heartbeat
+   if heartbeat % MAX_FPS == 0:
+      send({'heartbeat':heartbeat})
    heartbeat += 1
-   delta = clock.tick(MAX_FPS)
+   # Loop delay
+   time.sleep(.005)
    

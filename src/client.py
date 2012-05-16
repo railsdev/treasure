@@ -20,7 +20,8 @@ if __name__ == '__main__':
 import pygame, zmq
 pygame.mixer.pre_init(44100, -16, 1, 2048)
 pygame.init()
-import gfx, util, thing, world
+from treasure import *
+import gfx, world
 
 #-------------------------------------------------------------------------------
 # GLOBALS
@@ -32,10 +33,10 @@ global worldmap
 worldmap = None
 
 # Sounds
-oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'oink.ogg'))
-iamhere = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'iamhere.ogg'))
-byebye = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'byebye.ogg'))
-pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'treasure_music.ogg'))
+oink = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'oink.ogg'))
+iamhere = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'iamhere.ogg'))
+byebye = pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), 'sound', 'byebye.ogg'))
+pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), 'sound', 'treasure_music.ogg'))
 
 #-------------------------------------------------------------------------------
 # ZMQ INITIALIZATION
@@ -85,14 +86,11 @@ def recv():
    else:
       sep = msg.find(':')
       to = msg[0:sep]
-      obj = util.unpickle(msg[sep+1:])
+      obj = unpickle(msg[sep+1:])
       return obj
 
 #-------------------------------------------------------------------------------
 # GAME LOGIC
-
-def userevent(subtype, **kwargs):
-   pygame.event.post(pygame.event.Event(pygame.USEREVENT, subtype=subtype, **kwargs))
 
 # Handle network traffic received on the subscription socket
 def handle_network():
@@ -108,13 +106,13 @@ def handle_network():
             # We already know what we have done, so ignore it
             pass
          elif cmd == 'actor_enters':
-            userevent('update_actor', actor=actor)
-            userevent('redraw')
+            user_events.post('update_actor', actor=actor)
+            user_events.post('redraw')
          elif cmd == 'actor_moved':
-            userevent('update_actor', actor=actor)
+            user_events.post('update_actor', actor=actor)
          elif cmd == 'actor_exits':
-            userevent('remove_actor', actor=actor)
-            userevent('redraw')
+            user_events.post('remove_actor', actor=actor)
+            user_events.post('redraw')
          elif cmd == 'actor_speaks':
             print server_msg['chat_content']
       # Non-actor-based events
@@ -124,10 +122,10 @@ def handle_network():
             print 'Server has quit...stopping client.'
             quit()
          elif cmd == 'set_map':
-            userevent('set_map', terrain=server_msg['terrain'])
+            user_events.post('set_map', terrain=server_msg['terrain'])
          elif cmd == 'update_scoreboard':
             gfx.set_scoreboard(server_msg['scoreboard'])
-            userevent('redraw')
+            user_events.post('redraw')
 
 def handle_keypress(event):
 #   print pygame.key.name(event.key)
@@ -137,7 +135,21 @@ def handle_keypress(event):
       quit()
    # Movement?
    if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
-      p1.control(event)
+      # Figure out the direction
+      direction = None
+      if event.key == pygame.K_UP:
+         direction = 'up'
+      elif event.key == pygame.K_DOWN:
+         direction = 'down'
+      elif event.key == pygame.K_LEFT:
+         direction = 'left'
+      elif event.key == pygame.K_RIGHT:
+         direction = 'right'
+      # Is it a keydown or a keyup?
+      if event.type == pygame.KEYDOWN:
+         p1.keydown(direction)
+      else:
+         p1.keyup(direction)
    # Global toggles?
    if event.type == pygame.KEYDOWN:
       # Toggle music
@@ -169,7 +181,7 @@ def quit():
 
 if __name__ == '__main__':
    # Player 1 (this client's main player)
-   p1 = thing.Player(1,1, name)
+   p1 = Player(1,1, name)
    sub_socket.setsockopt(zmq.SUBSCRIBE, p1.uid)
 
    send('connect')
@@ -196,29 +208,33 @@ if __name__ == '__main__':
             handle_keypress(event)
          elif event.type == pygame.ACTIVEEVENT:
             pass
-         elif event.type == pygame.USEREVENT:
-            if event.subtype == 'move':
-               worldmap.move_player(event.direction)
-            elif event.subtype == 'sound':
-               if event.sound == 'oink':
-                  oink.play()
-               elif event.sound == 'iamhere':
-                  iamhere.play()
-               elif event.sound == 'byebye':
-                  byebye.play()
-            elif event.subtype == 'redraw':
-               redraw = True
-            elif event.subtype == 'update_actor':
-               if worldmap:
-                  worldmap.update_actor(event.actor)
-            elif event.subtype == 'remove_actor':
-               if worldmap:
-                  worldmap.remove_actor(event.actor)
-               redraw = True
-            elif event.subtype == 'set_map':
-               worldmap = world.Map(p1, send, event.terrain)
          else:
             print "Unhandled event:", event
+      
+      while user_events.peek():
+         event = user_events.get()
+         if event.type == 'move':
+            worldmap.move_player(event.direction)
+         elif event.type == 'sound':
+            if event.sound == 'oink':
+               oink.play()
+            elif event.sound == 'iamhere':
+               iamhere.play()
+            elif event.sound == 'byebye':
+               byebye.play()
+         elif event.type == 'redraw':
+            redraw = True
+         elif event.type == 'update_actor':
+            if worldmap:
+               worldmap.update_actor(event.actor)
+         elif event.type == 'remove_actor':
+            if worldmap:
+               worldmap.remove_actor(event.actor)
+            redraw = True
+         elif event.type == 'set_map':
+            worldmap = world.Map(p1, send, event.terrain)
+            redraw = True
+            
       if worldmap:
          worldmap.update(delta)
       handle_graphics(window, redraw)
